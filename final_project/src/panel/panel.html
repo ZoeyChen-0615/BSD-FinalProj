@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WorkWise</title>
+    <link rel="stylesheet" href="./panel.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <p class="eyebrow">WorkWise</p>
+        <h1>LinkedIn job fit, without tab switching.</h1>
+        <p class="hero-copy">
+          Upload one resume, open a LinkedIn job, and refresh the panel for fit, language risk, and company work-life balance.
+        </p>
+      </header>
+
+      <main class="stack">
+        <section class="card">
+          <div class="section-head">
+            <h2>Profile</h2>
+            <span id="authBadge" class="badge badge-muted">Local demo mode</span>
+          </div>
+          <p id="profileSummary" class="muted">No resume uploaded yet.</p>
+          <label class="upload">
+            <span>Upload Resume (.txt, .docx)</span>
+            <input
+              id="resumeInput"
+              type="file"
+              accept=".txt,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            />
+          </label>
+          <div id="resumeSkills" class="chip-row"></div>
+          <div class="resume-debug">
+            <p class="debug-label">Extracted Resume Preview</p>
+            <pre id="resumePreview" class="debug-preview">No extracted resume text yet.</pre>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <h2>Current Job</h2>
+            <button id="refreshButton" class="button">Refresh</button>
+          </div>
+          <p id="jobMeta" class="muted">Open a LinkedIn job posting, then click refresh.</p>
+          <p id="jobDescriptionHint" class="hint"></p>
+          <div class="resume-debug">
+            <p class="debug-label">Captured Job Preview</p>
+            <pre id="jobPreview" class="debug-preview">No captured job data yet.</pre>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <h2>Skills Match</h2>
+            <span id="matchScore" class="score-pill">--</span>
+          </div>
+          <div id="requirementsList" class="list"></div>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <h2>Language Signals</h2>
+          </div>
+          <p id="languageSummary" class="muted">No analysis yet.</p>
+          <div class="signal-grid">
+            <div>
+              <h3>Green Flags</h3>
+              <div id="greenFlags" class="list compact"></div>
+            </div>
+            <div>
+              <h3>Red Flags</h3>
+              <div id="redFlags" class="list compact"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <h2>Company WLB</h2>
+            <span id="coverageBadge" class="badge badge-muted">Awaiting lookup</span>
+          </div>
+          <div id="companyInsights" class="company-grid">
+            <div class="metric">
+              <span class="metric-label">WLB rating</span>
+              <strong id="wlbValue">--</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Company size</span>
+              <strong id="companySize">--</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Industry</span>
+              <strong id="industry">--</strong>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Salary hint</span>
+              <strong id="salaryHint">--</strong>
+            </div>
+          </div>
+          <div class="signal-grid">
+            <div>
+              <h3>Pros</h3>
+              <div id="companyPros" class="list compact"></div>
+            </div>
+            <div>
+              <h3>Cons</h3>
+              <div id="companyCons" class="list compact"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./panel.js"></script>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+//
+//  AppDelegate.swift
+//  WorkWiseSafari
+//
+//  Created by ZoeyChen on 4/23/26.
+//
+
+import Cocoa
+
+@main
+class AppDelegate: NSObject, NSApplicationDelegate {
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Override point for customization after application launch.
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return true
+    }
+
+}

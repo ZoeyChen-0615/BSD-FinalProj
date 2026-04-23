@@ -1,0 +1,3 @@
+Data Engineer with 4 years of experience building ETL pipelines and analytics platforms.
+Strong Python, SQL, Airflow, Spark, AWS, dbt, Docker, and data modeling skills.
+Built batch and near real-time data workflows, collaborated with analytics and product teams, and maintained reliable pipeline observability.

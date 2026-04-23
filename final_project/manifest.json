@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "WorkWise",
+  "version": "0.1.0",
+  "description": "LinkedIn side panel for job fit, work-life balance, and resume-based insights.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://www.linkedin.com/*"
+  ],
+  "action": {
+    "default_title": "Open WorkWise",
+    "default_popup": "src/panel/panel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/jobs/*"
+      ],
+      "js": [
+        "src/content/jobWatcher.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
