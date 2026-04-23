@@ -1,5 +1,6 @@
 import { ANALYSIS_SCHEMA_VERSION, providerRegistry } from "../shared/providers.js";
 import {
+  STORAGE_KEYS,
   loadCurrentAnalysis,
   loadDetectedJob,
   loadProfile,
@@ -1057,6 +1058,50 @@ function renderAnalysis(analysis) {
   renderList(ui.companyCons, company.cons, (item) => createTag(item, "signal negative"));
 }
 
+function getProfileAnalysisKey(profile) {
+  if (!profile?.parsedResume) {
+    return "no-profile";
+  }
+
+  const uploadedAt = profile.resume?.uploadedAt ?? "";
+  const skills = [...(profile.parsedResume.skills ?? [])].sort().join("|");
+  const summary = profile.parsedResume.summary ?? "";
+  return [uploadedAt, skills, summary].join("::");
+}
+
+async function analyzeAndRenderJob(job, profile) {
+  const [jobAnalysis, company] = await Promise.all([
+    providerRegistry.jobAnalyzer.analyzeJob({ job, profile }),
+    providerRegistry.companyInsights.lookupCompany(job.company)
+  ]);
+
+  const analysis = {
+    job,
+    ...jobAnalysis,
+    company,
+    profileAnalysisKey: getProfileAnalysisKey(profile)
+  };
+
+  await saveCurrentAnalysis(analysis);
+  renderAnalysis(analysis);
+}
+
+async function recomputeAnalysisForProfile(profile, fallbackJob = null) {
+  if (!profile?.parsedResume) {
+    return;
+  }
+
+  const [cachedJob, currentAnalysis] = await Promise.all([loadDetectedJob(), loadCurrentAnalysis()]);
+  const jobToRefresh = cachedJob ?? currentAnalysis?.job ?? fallbackJob ?? null;
+
+  if (!jobToRefresh || (!jobToRefresh.title && !jobToRefresh.company && !jobToRefresh.description)) {
+    return;
+  }
+
+  ui.jobMeta.textContent = "Resume updated. Recalculating match...";
+  await analyzeAndRenderJob(jobToRefresh, profile);
+}
+
 async function readTextFile(file) {
   const extension = getFileExtension(file.name);
 
@@ -1087,6 +1132,7 @@ async function handleResumeUpload(event) {
     const profile = await providerRegistry.resumeParser.parseResume(fileText, { fileName: file.name });
     await saveProfile(profile);
     renderProfile(profile);
+    await recomputeAnalysisForProfile(profile);
   } catch (error) {
     ui.profileSummary.textContent =
       error?.message || "Resume upload failed. Use a text-based TXT or DOCX file.";
@@ -1160,17 +1206,10 @@ async function refreshAnalysis() {
   }
 
   const job = response.job;
-  const [jobAnalysis, company] = await Promise.all([
-    providerRegistry.jobAnalyzer.analyzeJob({ job, profile }),
-    providerRegistry.companyInsights.lookupCompany(job.company)
-  ]);
-
-  const analysis = { job, ...jobAnalysis, company };
-  await saveCurrentAnalysis(analysis);
-  renderAnalysis(analysis);
+  await analyzeAndRenderJob(job, profile);
 }
 
-function analysisNeedsRefresh(analysis) {
+function analysisNeedsRefresh(analysis, profile) {
   if (!analysis) {
     return true;
   }
@@ -1184,6 +1223,10 @@ function analysisNeedsRefresh(analysis) {
   }
 
   if (!analysis.languageSignals?.greenFlags?.length || !analysis.languageSignals?.redFlags?.length) {
+    return true;
+  }
+
+  if (analysis.profileAnalysisKey !== getProfileAnalysisKey(profile)) {
     return true;
   }
 
@@ -1212,21 +1255,46 @@ async function boot() {
     profile?.parsedResume &&
     cachedJob &&
     (cachedJob.title || cachedJob.company || cachedJob.description) &&
-    analysisNeedsRefresh(analysis)
+    analysisNeedsRefresh(analysis, profile)
   ) {
-    const [jobAnalysis, company] = await Promise.all([
-      providerRegistry.jobAnalyzer.analyzeJob({ job: cachedJob, profile }),
-      providerRegistry.companyInsights.lookupCompany(cachedJob.company)
-    ]);
-
-    const refreshedAnalysis = { job: cachedJob, ...jobAnalysis, company };
-    await saveCurrentAnalysis(refreshedAnalysis);
-    renderAnalysis(refreshedAnalysis);
+    await analyzeAndRenderJob(cachedJob, profile);
     return;
   }
 
   renderAnalysis(analysis);
 }
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "local") {
+    return;
+  }
+
+  if (changes[STORAGE_KEYS.profile]) {
+    const profile = changes[STORAGE_KEYS.profile].newValue ?? null;
+    renderProfile(profile);
+
+    if (profile?.parsedResume) {
+      recomputeAnalysisForProfile(profile, changes[STORAGE_KEYS.detectedJob]?.newValue ?? null).catch(() => {});
+    }
+  }
+
+  if (changes[STORAGE_KEYS.currentAnalysis]) {
+    renderAnalysis(changes[STORAGE_KEYS.currentAnalysis].newValue ?? null);
+  }
+
+  if (changes[STORAGE_KEYS.detectedJob]) {
+    const job = changes[STORAGE_KEYS.detectedJob].newValue ?? null;
+    if (job) {
+      ui.jobPreview.textContent = [
+        `Title: ${job.title || "Unavailable"}`,
+        `Company: ${job.company || "Unavailable"}`,
+        `Location: ${job.location || "Unavailable"}`,
+        "",
+        job.description || "No job description captured."
+      ].join("\n");
+    }
+  }
+});
 
 ui.resumeInput.addEventListener("change", handleResumeUpload);
 ui.refreshButton.addEventListener("click", refreshAnalysis);
