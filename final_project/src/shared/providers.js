@@ -1,5 +1,3 @@
-import { getCompanyRecord } from "./companyData.js";
-
 export const ANALYSIS_SCHEMA_VERSION = 2;
 
 const skillPatterns = [
@@ -280,26 +278,207 @@ export const demoJobAnalyzer = {
 
 export const demoCompanyInsightsProvider = {
   async lookupCompany(companyName) {
-    const record = getCompanyRecord(companyName);
+    const record = await lookupCompanyFromGlassdoorCsv(companyName);
     if (record) {
       return {
         ...record,
-        source: "demo-glassdoor-seed"
+        source: "glassdoor-csv"
       };
     }
 
     return {
       name: companyName || "Unknown company",
-      workLifeBalance: null,
-      companySize: "Unavailable",
-      industry: "Unavailable",
-      salaryHint: "Unavailable",
+      workLifeBalance: "--",
+      companySize: "--",
+      industry: "--",
+      salaryHint: "--",
       pros: [],
       cons: [],
       source: "no-coverage"
     };
   }
 };
+
+const GLASSDOOR_CSV_PATH = "src/shared/glassdoor_cleaned.csv";
+
+let glassdoorCompanyIndexPromise = null;
+
+function normalizeCompanyLookup(value) {
+  return (value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\b(inc|llc|ltd|corp|corporation|company|co|plc|group|holdings)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseCsvLine(line) {
+  const cells = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+
+    if (char === '"') {
+      if (inQuotes && line[index + 1] === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      cells.push(current);
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  cells.push(current);
+  return cells.map((cell) => cell.trim());
+}
+
+function createMetricTracker() {
+  return { sum: 0, count: 0 };
+}
+
+function appendMetric(tracker, rawValue) {
+  const value = Number.parseFloat(rawValue);
+  if (!Number.isFinite(value)) {
+    return;
+  }
+
+  tracker.sum += value;
+  tracker.count += 1;
+}
+
+function averageMetric(tracker) {
+  if (!tracker.count) {
+    return null;
+  }
+
+  return (tracker.sum / tracker.count).toFixed(1);
+}
+
+function appendUniqueSnippet(list, rawValue) {
+  const value = (rawValue || "").replace(/\s+/g, " ").trim();
+  if (!value || list.includes(value)) {
+    return;
+  }
+
+  list.push(value);
+}
+
+async function buildGlassdoorCompanyIndex() {
+  const response = await fetch(chrome.runtime.getURL(GLASSDOOR_CSV_PATH));
+  const csvText = await response.text();
+  const lines = csvText.split(/\r?\n/).filter(Boolean);
+
+  if (lines.length <= 1) {
+    return new Map();
+  }
+
+  const headers = parseCsvLine(lines[0]);
+  const companyIndex = new Map();
+  const companyColumn = headers.indexOf("firm_name");
+  const ratingColumn = headers.indexOf("rating");
+  const prosColumn = headers.indexOf("pros");
+  const consColumn = headers.indexOf("cons");
+  const careerColumn = headers.indexOf("Career Opportunities");
+  const compensationColumn = headers.indexOf("Compensation and Benefits");
+  const wlbColumn = headers.indexOf("Work/Life Balance");
+
+  for (const line of lines.slice(1)) {
+    const row = parseCsvLine(line);
+    const companyName = row[companyColumn];
+    const normalizedCompany = normalizeCompanyLookup(companyName);
+
+    if (!normalizedCompany) {
+      continue;
+    }
+
+    if (!companyIndex.has(normalizedCompany)) {
+      companyIndex.set(normalizedCompany, {
+        name: companyName.trim(),
+        rating: createMetricTracker(),
+        careerOpportunities: createMetricTracker(),
+        compensationAndBenefits: createMetricTracker(),
+        workLifeBalance: createMetricTracker(),
+        pros: [],
+        cons: []
+      });
+    }
+
+    const aggregate = companyIndex.get(normalizedCompany);
+    appendMetric(aggregate.rating, row[ratingColumn]);
+    appendMetric(aggregate.careerOpportunities, row[careerColumn]);
+    appendMetric(aggregate.compensationAndBenefits, row[compensationColumn]);
+    appendMetric(aggregate.workLifeBalance, row[wlbColumn]);
+    appendUniqueSnippet(aggregate.pros, row[prosColumn]);
+    appendUniqueSnippet(aggregate.cons, row[consColumn]);
+  }
+
+  return companyIndex;
+}
+
+async function loadGlassdoorCompanyIndex() {
+  if (!glassdoorCompanyIndexPromise) {
+    glassdoorCompanyIndexPromise = buildGlassdoorCompanyIndex();
+  }
+
+  return glassdoorCompanyIndexPromise;
+}
+
+function pickBestCompanyAggregate(companyIndex, companyName) {
+  const normalizedTarget = normalizeCompanyLookup(companyName);
+  if (!normalizedTarget) {
+    return null;
+  }
+
+  if (companyIndex.has(normalizedTarget)) {
+    return companyIndex.get(normalizedTarget);
+  }
+
+  let bestMatch = null;
+
+  for (const [normalizedName, aggregate] of companyIndex.entries()) {
+    if (
+      normalizedName.includes(normalizedTarget) ||
+      normalizedTarget.includes(normalizedName)
+    ) {
+      if (!bestMatch || normalizedName.length > bestMatch.normalizedName.length) {
+        bestMatch = { normalizedName, aggregate };
+      }
+    }
+  }
+
+  return bestMatch?.aggregate ?? null;
+}
+
+async function lookupCompanyFromGlassdoorCsv(companyName) {
+  const companyIndex = await loadGlassdoorCompanyIndex();
+  const aggregate = pickBestCompanyAggregate(companyIndex, companyName);
+
+  if (!aggregate) {
+    return null;
+  }
+
+  return {
+    name: aggregate.name,
+    workLifeBalance: averageMetric(aggregate.rating) ?? "--",
+    companySize: averageMetric(aggregate.careerOpportunities) ?? "--",
+    industry: averageMetric(aggregate.compensationAndBenefits) ?? "--",
+    salaryHint: averageMetric(aggregate.workLifeBalance) ?? "--",
+    pros: aggregate.pros.slice(0, 3),
+    cons: aggregate.cons.slice(0, 3)
+  };
+}
 
 export const providerRegistry = {
   authStore: {

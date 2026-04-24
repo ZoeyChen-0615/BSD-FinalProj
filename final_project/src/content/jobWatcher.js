@@ -391,22 +391,35 @@ function firstText(selectors) {
   return "";
 }
 
-function stripJobDescriptionLabel(text) {
-  const normalized = text || "";
-  const markerMatch = normalized.match(
-    /about the job|job description|responsibilities|what you'll do|minimum qualifications|preferred qualifications|qualifications/i
+function stripJobDescriptionNoise(text) {
+  return cleanText(
+    (text || "")
+      .replace(/^show match details beta\s*[•·]?\s*/i, "")
+      .replace(/^is this information helpful\?\s*/i, "")
+      .replace(/^get personalized tips to stand out to hirers\s*/i, "")
+      .replace(/^find jobs where you(?:'|’)re a top applicant and tailor your resume with the help of ai\.?\s*/i, "")
+      .replace(/^reactivate premium:\s*\d+% off\s*/i, "")
+      .replace(/^beta\s*[•·]?\s*/i, "")
   );
-  const sliced = markerMatch ? normalized.slice(markerMatch.index) : normalized;
+}
+
+function stripJobDescriptionLabel(text) {
+  const normalized = stripJobDescriptionNoise(text);
+  const lower = normalized.toLowerCase();
+  const aboutIndex = lower.indexOf("about the job");
+  const fallbackMatch = normalized.match(
+    /job description|responsibilities|what you'll do|minimum qualifications|preferred qualifications|qualifications/i
+  );
+  const sliced =
+    aboutIndex >= 0
+      ? normalized.slice(aboutIndex + "about the job".length)
+      : fallbackMatch
+        ? normalized.slice(fallbackMatch.index + fallbackMatch[0].length)
+        : normalized;
 
   return cleanText(
     sliced
-      .replace(/^about the job\s*/i, "")
-      .replace(/^job description\s*/i, "")
-      .replace(/^responsibilities\s*/i, "")
-      .replace(/^what you'll do\s*/i, "")
-      .replace(/^minimum qualifications\s*/i, "")
-      .replace(/^preferred qualifications\s*/i, "")
-      .replace(/^qualifications\s*/i, "")
+      .replace(/^[\s•·:;-]+/, "")
   );
 }
 
@@ -582,18 +595,12 @@ function syncJobToStorage() {
       sameJob && existingJob?.description && !extractedJob.description
         ? {
             ...extractedJob,
-            description: existingJob.description
+            description: stripJobDescriptionLabel(existingJob.description)
           }
-        : extractedJob;
-
-    if (
-      sameJob &&
-      existingJob?.description &&
-      job.description &&
-      existingJob.description.length > job.description.length
-    ) {
-      job.description = existingJob.description;
-    }
+        : {
+            ...extractedJob,
+            description: stripJobDescriptionLabel(extractedJob.description)
+          };
 
     const signature = JSON.stringify([
       job.id,
