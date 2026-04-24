@@ -3,6 +3,13 @@ export const ANALYSIS_SCHEMA_VERSION = 2;
 const skillPatterns = [
   { key: "python", label: "Python", patterns: ["python", "pandas", "numpy"] },
   { key: "c-plus-plus", label: "C++", patterns: ["c++", "cpp"] },
+  { key: "c-sharp", label: "C#", patterns: ["c#", ".net", "dotnet", "asp.net", "asp net"] },
+  { key: "go", label: "Go", patterns: ["golang", " go ", "go,", "go."] },
+  { key: "rust", label: "Rust", patterns: ["rust"] },
+  { key: "ruby", label: "Ruby", patterns: ["ruby", "rails", "ruby on rails"] },
+  { key: "php", label: "PHP", patterns: ["php", "laravel"] },
+  { key: "scala", label: "Scala", patterns: ["scala"] },
+  { key: "r", label: "R", patterns: [" r ", "r programming", "r language"] },
   { key: "sql", label: "SQL", patterns: ["sql", "postgres", "mysql", "snowflake", "bigquery"] },
   { key: "spark", label: "Spark", patterns: ["spark", "pyspark", "databricks"] },
   { key: "pyspark", label: "PySpark", patterns: ["pyspark"] },
@@ -12,8 +19,17 @@ const skillPatterns = [
   { key: "azure", label: "Azure", patterns: ["azure", "synapse", "azure databricks", "azuredatabricks"] },
   { key: "docker", label: "Docker", patterns: ["docker", "container"] },
   { key: "kubernetes", label: "Kubernetes", patterns: ["kubernetes", "k8s"] },
+  { key: "linux", label: "Linux", patterns: ["linux", "unix", "bash", "shell scripting"] },
   { key: "java", label: "Java", patterns: ["java"] },
   { key: "javascript", label: "JavaScript", patterns: ["javascript", "typescript", "node"] },
+  { key: "react", label: "React", patterns: ["react", "reactjs", "react.js"] },
+  { key: "vue", label: "Vue", patterns: ["vue", "vuejs", "vue.js"] },
+  { key: "angular", label: "Angular", patterns: ["angular"] },
+  { key: "html-css", label: "HTML/CSS", patterns: ["html", "css", "scss", "frontend"] },
+  { key: "node-js", label: "Node.js", patterns: ["node.js", "nodejs", "express.js", "expressjs", "express"] },
+  { key: "spring", label: "Spring", patterns: ["spring", "spring framework"] },
+  { key: "django", label: "Django", patterns: ["django"] },
+  { key: "flask", label: "Flask", patterns: ["flask"] },
   { key: "dbt", label: "dbt", patterns: ["dbt"] },
   { key: "etl", label: "ETL / ELT", patterns: ["etl", "elt", "pipeline"] },
   { key: "data-modeling", label: "Data Modeling", patterns: ["data modeling", "data models", "dimensional", "schema"] },
@@ -26,11 +42,16 @@ const skillPatterns = [
   { key: "mongodb", label: "MongoDB", patterns: ["mongodb", "mongo db"] },
   { key: "redis", label: "Redis", patterns: ["redis"] },
   { key: "oracle", label: "Oracle", patterns: ["oracle", "oracle db", "oracle database"] },
+  { key: "postgresql", label: "PostgreSQL", patterns: ["postgresql", "postgres"] },
+  { key: "sql-server", label: "SQL Server", patterns: ["sql server", "mssql", "microsoft sql server"] },
   { key: "excel", label: "Excel", patterns: ["excel", "microsoft excel"] },
   { key: "microsoft-office", label: "Microsoft Office", patterns: ["microsoft office", "ms office"] },
   { key: "power-bi", label: "Power BI", patterns: ["power bi", "powerbi"] },
   { key: "tableau", label: "Tableau", patterns: ["tableau"] },
   { key: "git", label: "Git", patterns: ["git", "github"] },
+  { key: "jira", label: "Jira", patterns: ["jira", "atlassian"] },
+  { key: "salesforce", label: "Salesforce", patterns: ["salesforce", "sales cloud", "service cloud"] },
+  { key: "sap", label: "SAP", patterns: ["sap", "sap hana", "s/4hana"] },
   { key: "mysql", label: "MySQL", patterns: ["mysql"] },
   { key: "apis", label: "APIs", patterns: [" api ", " apis ", "api,", "apis,"] },
   { key: "data-quality", label: "Data Quality", patterns: ["data quality", "data validation", "schema consistency", "anomaly detection"] },
@@ -38,8 +59,76 @@ const skillPatterns = [
   { key: "software-engineering", label: "Software Engineering", patterns: ["software engineering", "software engineer", "software development", "software product engineering"] },
   { key: "computer-programming", label: "Computer Programming", patterns: ["computer programming", "programming language", "programming"] },
   { key: "a-b-testing", label: "A/B Testing", patterns: ["a/b test", "ab test", "a/b testing"] },
+  { key: "data-analysis", label: "Data Analysis", patterns: ["data analysis", "analyze data", "analytics"] },
+  { key: "automation", label: "Automation", patterns: ["automation", "automate", "workflow automation"] },
+  { key: "testing", label: "Testing", patterns: ["testing", "unit test", "integration test", "qa"] },
   { key: "machine-learning", label: "Machine Learning", patterns: ["machine learning", "random forest", "adaboost", "bert", "bertopic", "k-means", "tf-idf"] }
 ];
+
+const learningResourceMap = {
+  Python: { title: "Python Official Tutorial", provider: "Python Docs", url: "https://docs.python.org/3/tutorial/" },
+  "C++": { title: "Learn C++", provider: "LearnCpp", url: "https://www.learncpp.com/" },
+  "C#": { title: "C# Fundamentals", provider: "Microsoft Learn", url: "https://learn.microsoft.com/en-us/dotnet/csharp/" },
+  Go: { title: "A Tour of Go", provider: "Go", url: "https://go.dev/tour/" },
+  Rust: { title: "The Rust Book", provider: "Rust", url: "https://doc.rust-lang.org/book/" },
+  Ruby: { title: "Ruby Documentation", provider: "Ruby", url: "https://www.ruby-lang.org/en/documentation/" },
+  PHP: { title: "PHP Manual", provider: "PHP", url: "https://www.php.net/manual/en/" },
+  Scala: { title: "Scala Tour", provider: "Scala", url: "https://docs.scala-lang.org/tour/tour-of-scala.html" },
+  R: { title: "R for Data Science", provider: "Posit", url: "https://r4ds.hadley.nz/" },
+  SQL: { title: "SQLBolt Lessons", provider: "SQLBolt", url: "https://sqlbolt.com/" },
+  Spark: { title: "Spark Quick Start", provider: "Apache Spark", url: "https://spark.apache.org/docs/latest/quick-start.html" },
+  PySpark: { title: "PySpark Quick Start", provider: "Apache Spark", url: "https://spark.apache.org/docs/latest/api/python/getting_started/index.html" },
+  Airflow: { title: "Airflow Tutorial", provider: "Apache Airflow", url: "https://airflow.apache.org/docs/apache-airflow/stable/tutorial/" },
+  AWS: { title: "AWS Cloud Practitioner Essentials", provider: "AWS Skill Builder", url: "https://explore.skillbuilder.aws/learn" },
+  GCP: { title: "Google Cloud Training", provider: "Google Cloud Skills Boost", url: "https://www.cloudskillsboost.google/" },
+  Azure: { title: "Azure Fundamentals", provider: "Microsoft Learn", url: "https://learn.microsoft.com/en-us/training/azure/" },
+  Docker: { title: "Docker Get Started", provider: "Docker Docs", url: "https://docs.docker.com/get-started/" },
+  Kubernetes: { title: "Kubernetes Basics", provider: "Kubernetes", url: "https://kubernetes.io/docs/tutorials/kubernetes-basics/" },
+  Linux: { title: "Introduction to Linux", provider: "edX", url: "https://www.edx.org/learn/linux" },
+  Java: { title: "Dev.java Learn", provider: "Oracle", url: "https://dev.java/learn/" },
+  JavaScript: { title: "JavaScript Guide", provider: "MDN", url: "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide" },
+  React: { title: "React Learn", provider: "React", url: "https://react.dev/learn" },
+  Vue: { title: "Vue Essentials", provider: "Vue", url: "https://vuejs.org/tutorial/" },
+  Angular: { title: "Angular Tutorial", provider: "Angular", url: "https://angular.dev/tutorials/learn-angular" },
+  "HTML/CSS": { title: "Learn HTML and CSS", provider: "MDN", url: "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Structuring_content" },
+  "Node.js": { title: "Node.js Learn", provider: "Node.js", url: "https://nodejs.org/en/learn" },
+  Spring: { title: "Spring Guides", provider: "Spring", url: "https://spring.io/guides" },
+  Django: { title: "Django Tutorial", provider: "Django", url: "https://docs.djangoproject.com/en/stable/intro/tutorial01/" },
+  Flask: { title: "Flask Tutorial", provider: "Flask", url: "https://flask.palletsprojects.com/en/stable/tutorial/" },
+  dbt: { title: "dbt Fundamentals", provider: "dbt Learn", url: "https://learn.getdbt.com/" },
+  "ETL / ELT": { title: "Data Pipelines Overview", provider: "Astronomer", url: "https://www.astronomer.io/guides/etl/" },
+  "Data Modeling": { title: "Dimensional Modeling Basics", provider: "Kimball Group", url: "https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/" },
+  Kafka: { title: "Kafka Quick Start", provider: "Apache Kafka", url: "https://kafka.apache.org/quickstart" },
+  Flink: { title: "Flink Docs", provider: "Apache Flink", url: "https://nightlies.apache.org/flink/flink-docs-stable/docs/" },
+  Hive: { title: "Hive Tutorials", provider: "Apache Hive", url: "https://hive.apache.org/" },
+  Databricks: { title: "Databricks Academy", provider: "Databricks", url: "https://www.databricks.com/learn/training/home" },
+  "Spring Boot": { title: "Spring Boot Guides", provider: "Spring", url: "https://spring.io/guides" },
+  "REST APIs": { title: "REST API Design Best Practices", provider: "Microsoft", url: "https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-design" },
+  MongoDB: { title: "MongoDB University", provider: "MongoDB", url: "https://learn.mongodb.com/" },
+  Redis: { title: "Redis University", provider: "Redis", url: "https://university.redis.com/" },
+  Oracle: { title: "Oracle Database Docs", provider: "Oracle", url: "https://docs.oracle.com/en/database/" },
+  PostgreSQL: { title: "PostgreSQL Tutorial", provider: "PostgreSQL", url: "https://www.postgresql.org/docs/current/tutorial.html" },
+  "SQL Server": { title: "SQL Server Training", provider: "Microsoft Learn", url: "https://learn.microsoft.com/en-us/training/browse/?products=sql-server" },
+  Excel: { title: "Excel Training", provider: "Microsoft", url: "https://support.microsoft.com/en-us/excel" },
+  "Microsoft Office": { title: "Microsoft 365 Training", provider: "Microsoft", url: "https://support.microsoft.com/en-us/training" },
+  "Power BI": { title: "Power BI Learning Path", provider: "Microsoft Learn", url: "https://learn.microsoft.com/en-us/training/powerplatform/power-bi/" },
+  Tableau: { title: "Tableau Learning", provider: "Tableau", url: "https://www.tableau.com/learn/training" },
+  Git: { title: "Learn Git Branching", provider: "Learn Git Branching", url: "https://learngitbranching.js.org/" },
+  Jira: { title: "Jira Tutorials", provider: "Atlassian", url: "https://www.atlassian.com/software/jira/guides" },
+  Salesforce: { title: "Trailhead", provider: "Salesforce", url: "https://trailhead.salesforce.com/" },
+  SAP: { title: "SAP Learning", provider: "SAP", url: "https://learning.sap.com/" },
+  MySQL: { title: "MySQL Tutorial", provider: "MySQL", url: "https://dev.mysql.com/doc/refman/8.0/en/tutorial.html" },
+  APIs: { title: "Web APIs", provider: "MDN", url: "https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Client-side_APIs/Introduction" },
+  "Data Quality": { title: "Data Quality Overview", provider: "IBM", url: "https://www.ibm.com/think/topics/data-quality" },
+  "Cloud Platforms": { title: "Cloud Fundamentals", provider: "Microsoft Learn", url: "https://learn.microsoft.com/en-us/training/paths/azure-fundamentals-describe-cloud-concepts/" },
+  "Software Engineering": { title: "Software Engineering Basics", provider: "Coursera", url: "https://www.coursera.org/learn/introduction-to-software-engineering" },
+  "Computer Programming": { title: "CS50 Intro to Programming", provider: "Harvard", url: "https://pll.harvard.edu/course/cs50s-introduction-programming-python" },
+  "A/B Testing": { title: "A/B Testing Guide", provider: "Google", url: "https://developers.google.com/analytics/devguides/collection/ga4/ab-testing" },
+  "Data Analysis": { title: "Data Analysis with Python", provider: "freeCodeCamp", url: "https://www.freecodecamp.org/learn/data-analysis-with-python/" },
+  Automation: { title: "Automation Basics", provider: "Zapier", url: "https://zapier.com/learn/automation/" },
+  Testing: { title: "Software Testing", provider: "Atlassian", url: "https://www.atlassian.com/continuous-delivery/software-testing" },
+  "Machine Learning": { title: "Machine Learning Crash Course", provider: "Google", url: "https://developers.google.com/machine-learning/crash-course" }
+};
 
 const redFlagRules = [
   { phrase: "fast-paced", reason: "May imply chronic urgency or reactive planning." },
@@ -167,6 +256,27 @@ function buildRequirementList(text, resumeSkills) {
   ];
 }
 
+function buildLearningPath(missingSkills) {
+  return missingSkills.slice(0, 5).map((skill) => {
+    const resource = learningResourceMap[skill];
+    if (resource) {
+      return {
+        skill,
+        ...resource,
+        courseraUrl: `https://www.coursera.org/search?query=${encodeURIComponent(skill)}`
+      };
+    }
+
+    return {
+      skill,
+      title: `Learn ${skill}`,
+      provider: "Official docs / free tutorial",
+      url: `https://www.google.com/search?q=${encodeURIComponent(`${skill} tutorial official docs`)}`,
+      courseraUrl: `https://www.coursera.org/search?query=${encodeURIComponent(skill)}`
+    };
+  });
+}
+
 function collectLanguageFlags(description, rules) {
   return rules
     .filter((rule) => includesAny(description, rule.patterns))
@@ -270,7 +380,8 @@ export const demoJobAnalyzer = {
         score: matchScore,
         matchedSkills,
         missingSkills,
-        requirements
+        requirements,
+        learningPath: buildLearningPath(missingSkills)
       },
       languageSignals: {
         redFlags,

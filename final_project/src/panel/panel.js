@@ -320,6 +320,8 @@ const ui = {
   jobPreview: document.getElementById("jobPreview"),
   matchScore: document.getElementById("matchScore"),
   requirementsList: document.getElementById("requirementsList"),
+  skillGapList: document.getElementById("skillGapList"),
+  learningPathList: document.getElementById("learningPathList"),
   languageSummary: document.getElementById("languageSummary"),
   greenFlags: document.getElementById("greenFlags"),
   redFlags: document.getElementById("redFlags"),
@@ -337,6 +339,37 @@ function createTag(label, className = "chip") {
   element.className = className;
   element.textContent = label;
   return element;
+}
+
+function createLearningResourceCard(item) {
+  const link = document.createElement("a");
+  link.className = "resource-card";
+  link.href = item.url;
+  link.target = "_blank";
+  link.rel = "noreferrer noopener";
+
+  const title = document.createElement("span");
+  title.className = "resource-title";
+  title.textContent = `${item.skill}: ${item.title}`;
+
+  const meta = document.createElement("span");
+  meta.className = "resource-meta";
+  meta.textContent = item.provider;
+
+  const coursera = document.createElement("a");
+  coursera.className = "resource-sub-link";
+  coursera.href = item.courseraUrl;
+  coursera.target = "_blank";
+  coursera.rel = "noreferrer noopener";
+  coursera.textContent = "Search on Coursera";
+  coursera.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
+
+  link.appendChild(title);
+  link.appendChild(meta);
+  link.appendChild(coursera);
+  return link;
 }
 
 function normalizeDisplayTitle(rawTitle) {
@@ -862,6 +895,13 @@ function renderAnalysis(analysis) {
   renderList(ui.requirementsList, match.requirements, (item) =>
     createTag(item.label, `requirement ${item.matched ? "matched" : "missing"}`)
   );
+  renderList(ui.skillGapList, match.missingSkills, (skill) => createTag(skill, "requirement missing"));
+  ui.learningPathList.innerHTML = "";
+  if (match.learningPath?.length) {
+    match.learningPath.forEach((item) => ui.learningPathList.appendChild(createLearningResourceCard(item)));
+  } else {
+    ui.learningPathList.appendChild(createTag("No learning recommendations yet.", "chip"));
+  }
 
   ui.languageSummary.textContent = languageSignals.summary;
   renderList(ui.greenFlags, languageSignals.greenFlags, (flag) =>
