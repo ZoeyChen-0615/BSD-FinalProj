@@ -298,8 +298,8 @@ function stripJobDescriptionLabel(text) {
   const jobId = getCurrentJobId();
 
   return {
-    id: jobId || `${company}-${title}`.toLowerCase().replace(/\s+/g, "-"),
-    title: isLikelyJobTitle(title) ? title : "",
+    id: jobId || `${company}`.toLowerCase().replace(/\s+/g, "-"),
+    title: "",
     company: isNoise(company) ? "" : company,
     location,
     description,
@@ -846,14 +846,12 @@ function renderAnalysis(analysis) {
 
   const { job, match, languageSignals, company } = analysis;
   const displayCompany = normalizeDisplayCompany(job.company);
-  const displayTitle = stripCompanyPrefixFromTitle(normalizeDisplayTitle(job.title), displayCompany);
 
-  ui.jobMeta.textContent = `${displayTitle || "Unknown title"} • ${displayCompany || "Unknown company"}`;
+  ui.jobMeta.textContent = displayCompany || "Unknown company";
   ui.jobDescriptionHint.textContent = job.description
     ? `${job.description.slice(0, 140)}${job.description.length > 140 ? "..." : ""}`
     : "No job description captured.";
   ui.jobPreview.textContent = [
-    `Title: ${job.title || "Unavailable"}`,
     `Company: ${job.company || "Unavailable"}`,
     `Location: ${job.location || "Unavailable"}`,
     "",
@@ -898,7 +896,7 @@ function mergeJobData(primaryJob = {}, fallbackJob = {}) {
   return {
     ...fallbackJob,
     ...primaryJob,
-    title: fallbackJob.title || primaryJob.title || "",
+    title: "",
     company: fallbackJob.company || primaryJob.company || "",
     location: fallbackJob.location || primaryJob.location || "",
     description: primaryJob.description || fallbackJob.description || ""
@@ -1003,7 +1001,7 @@ async function readLinkedInJobFromActiveTab() {
       })
       .then((results) => {
         const job = results?.[0]?.result ?? null;
-        if (!job || (!job.title && !job.company && !job.description)) {
+        if (!job || (!job.company && !job.description)) {
           return { ok: false, error: "Job details were not found on the current page layout." };
         }
 
@@ -1031,9 +1029,9 @@ async function refreshAnalysis() {
   const cachedJob = await loadDetectedJob();
   const liveResponse = await readLinkedInJobFromActiveTab();
   const response =
-    liveResponse?.ok && (liveResponse.job?.title || liveResponse.job?.company || liveResponse.job?.description)
+    liveResponse?.ok && (liveResponse.job?.company || liveResponse.job?.description)
       ? liveResponse
-      : cachedJob && (cachedJob.title || cachedJob.company || cachedJob.description)
+      : cachedJob && (cachedJob.company || cachedJob.description)
         ? { ok: true, job: cachedJob }
         : liveResponse;
   if (!response?.ok || !response?.job) {
@@ -1079,7 +1077,6 @@ async function boot() {
 
   if (cachedJob) {
     ui.jobPreview.textContent = [
-      `Title: ${cachedJob.title || "Unavailable"}`,
       `Company: ${cachedJob.company || "Unavailable"}`,
       `Location: ${cachedJob.location || "Unavailable"}`,
       "",
@@ -1090,7 +1087,7 @@ async function boot() {
   if (
     profile?.parsedResume &&
     cachedJob &&
-    (cachedJob.title || cachedJob.company || cachedJob.description) &&
+    (cachedJob.company || cachedJob.description) &&
     analysisNeedsRefresh(analysis, profile)
   ) {
     await analyzeAndRenderJob(cachedJob, profile);
@@ -1122,7 +1119,6 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     const job = changes[STORAGE_KEYS.detectedJob].newValue ?? null;
     if (job) {
       ui.jobPreview.textContent = [
-        `Title: ${job.title || "Unavailable"}`,
         `Company: ${job.company || "Unavailable"}`,
         `Location: ${job.location || "Unavailable"}`,
         "",

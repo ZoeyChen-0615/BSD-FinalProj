@@ -2,6 +2,7 @@ export const ANALYSIS_SCHEMA_VERSION = 2;
 
 const skillPatterns = [
   { key: "python", label: "Python", patterns: ["python", "pandas", "numpy"] },
+  { key: "c-plus-plus", label: "C++", patterns: ["c++", "cpp"] },
   { key: "sql", label: "SQL", patterns: ["sql", "postgres", "mysql", "snowflake", "bigquery"] },
   { key: "spark", label: "Spark", patterns: ["spark", "pyspark", "databricks"] },
   { key: "pyspark", label: "PySpark", patterns: ["pyspark"] },
@@ -24,6 +25,9 @@ const skillPatterns = [
   { key: "rest-apis", label: "REST APIs", patterns: ["rest api", "rest apis"] },
   { key: "mongodb", label: "MongoDB", patterns: ["mongodb", "mongo db"] },
   { key: "redis", label: "Redis", patterns: ["redis"] },
+  { key: "oracle", label: "Oracle", patterns: ["oracle", "oracle db", "oracle database"] },
+  { key: "excel", label: "Excel", patterns: ["excel", "microsoft excel"] },
+  { key: "microsoft-office", label: "Microsoft Office", patterns: ["microsoft office", "ms office"] },
   { key: "power-bi", label: "Power BI", patterns: ["power bi", "powerbi"] },
   { key: "tableau", label: "Tableau", patterns: ["tableau"] },
   { key: "git", label: "Git", patterns: ["git", "github"] },
@@ -31,6 +35,8 @@ const skillPatterns = [
   { key: "apis", label: "APIs", patterns: [" api ", " apis ", "api,", "apis,"] },
   { key: "data-quality", label: "Data Quality", patterns: ["data quality", "data validation", "schema consistency", "anomaly detection"] },
   { key: "power-platforms", label: "Cloud Platforms", patterns: ["cloud platform", "cloud platforms", "alicloud", "google cloud", "aws", "azure"] },
+  { key: "software-engineering", label: "Software Engineering", patterns: ["software engineering", "software engineer", "software development", "software product engineering"] },
+  { key: "computer-programming", label: "Computer Programming", patterns: ["computer programming", "programming language", "programming"] },
   { key: "a-b-testing", label: "A/B Testing", patterns: ["a/b test", "ab test", "a/b testing"] },
   { key: "machine-learning", label: "Machine Learning", patterns: ["machine learning", "random forest", "adaboost", "bert", "bertopic", "k-means", "tf-idf"] }
 ];
@@ -215,9 +221,8 @@ export const demoResumeParser = {
 
 export const demoJobAnalyzer = {
   async analyzeJob({ job, profile }) {
-    const title = job?.title ?? "";
     const description = job?.description ?? "";
-    const analysisText = `${title}\n${description}`.trim();
+    const analysisText = description.trim();
     const resumeSkills = profile?.parsedResume?.skills ?? [];
     const requirements = buildRequirementList(analysisText, resumeSkills);
     const matchedSkills = requirements.filter((item) => item.matched).map((item) => item.label);
@@ -375,6 +380,11 @@ function appendUniqueSnippet(list, rawValue) {
   list.push(value);
 }
 
+function parseRatingValue(rawValue) {
+  const value = Number.parseFloat(rawValue);
+  return Number.isFinite(value) ? value : null;
+}
+
 async function buildGlassdoorCompanyIndex() {
   const response = await fetch(chrome.runtime.getURL(GLASSDOOR_CSV_PATH));
   const csvText = await response.text();
@@ -410,18 +420,25 @@ async function buildGlassdoorCompanyIndex() {
         careerOpportunities: createMetricTracker(),
         compensationAndBenefits: createMetricTracker(),
         workLifeBalance: createMetricTracker(),
-        pros: [],
-        cons: []
+        topPros: [],
+        lowCons: []
       });
     }
 
     const aggregate = companyIndex.get(normalizedCompany);
+    const ratingValue = parseRatingValue(row[ratingColumn]);
     appendMetric(aggregate.rating, row[ratingColumn]);
     appendMetric(aggregate.careerOpportunities, row[careerColumn]);
     appendMetric(aggregate.compensationAndBenefits, row[compensationColumn]);
     appendMetric(aggregate.workLifeBalance, row[wlbColumn]);
-    appendUniqueSnippet(aggregate.pros, row[prosColumn]);
-    appendUniqueSnippet(aggregate.cons, row[consColumn]);
+
+    if (ratingValue === 5) {
+      appendUniqueSnippet(aggregate.topPros, row[prosColumn]);
+    }
+
+    if (ratingValue === 1 || ratingValue === 2) {
+      appendUniqueSnippet(aggregate.lowCons, row[consColumn]);
+    }
   }
 
   return companyIndex;
@@ -475,8 +492,8 @@ async function lookupCompanyFromGlassdoorCsv(companyName) {
     companySize: averageMetric(aggregate.careerOpportunities) ?? "--",
     industry: averageMetric(aggregate.compensationAndBenefits) ?? "--",
     salaryHint: averageMetric(aggregate.workLifeBalance) ?? "--",
-    pros: aggregate.pros.slice(0, 3),
-    cons: aggregate.cons.slice(0, 3)
+    pros: aggregate.topPros.slice(0, 3),
+    cons: aggregate.lowCons.slice(0, 3)
   };
 }
 

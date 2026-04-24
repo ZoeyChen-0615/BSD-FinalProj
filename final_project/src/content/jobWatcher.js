@@ -561,13 +561,13 @@ function extractJobFromPage() {
   const description = extractGlobalDescriptionFallback();
   const jobId = getCurrentJobId();
 
-  if (!jobId && !jobFields.title && !jobFields.company && !description) {
+  if (!jobId && !jobFields.company && !description) {
     return null;
   }
 
   return {
-    id: jobId || `${jobFields.company}-${jobFields.title}`.toLowerCase().replace(/\s+/g, "-"),
-    title: isLikelyJobTitle(jobFields.title) ? jobFields.title : "",
+    id: jobId || `${jobFields.company}`.toLowerCase().replace(/\s+/g, "-"),
+    title: "",
     company: isNoise(jobFields.company) ? "" : normalizeCompany(jobFields.company),
     location: jobFields.location,
     description,
@@ -580,7 +580,7 @@ let lastSignature = "";
 
 function syncJobToStorage() {
   const extractedJob = extractJobFromPage();
-  if (!extractedJob || (!extractedJob.title && !extractedJob.company && !extractedJob.description)) {
+  if (!extractedJob || (!extractedJob.company && !extractedJob.description)) {
     return;
   }
 
@@ -604,7 +604,6 @@ function syncJobToStorage() {
 
     const signature = JSON.stringify([
       job.id,
-      job.title,
       job.company,
       job.location,
       job.url,
