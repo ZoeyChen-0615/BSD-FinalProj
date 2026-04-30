@@ -932,6 +932,18 @@ function getProfileAnalysisKey(profile) {
   return [uploadedAt, skills, summary].join("::");
 }
 
+function getJobAnalysisKey(job) {
+  if (!job) {
+    return "no-job";
+  }
+
+  return [
+    job.company ?? "",
+    job.location ?? "",
+    job.description ?? ""
+  ].join("::");
+}
+
 function mergeJobData(primaryJob = {}, fallbackJob = {}) {
   return {
     ...fallbackJob,
@@ -953,7 +965,8 @@ async function analyzeAndRenderJob(job, profile) {
     job,
     ...jobAnalysis,
     company,
-    profileAnalysisKey: getProfileAnalysisKey(profile)
+    profileAnalysisKey: getProfileAnalysisKey(profile),
+    jobAnalysisKey: getJobAnalysisKey(job)
   };
 
   await saveCurrentAnalysis(analysis);
@@ -966,14 +979,40 @@ async function recomputeAnalysisForProfile(profile, fallbackJob = null) {
   }
 
   const [cachedJob, currentAnalysis] = await Promise.all([loadDetectedJob(), loadCurrentAnalysis()]);
-  const jobToRefresh = cachedJob ?? currentAnalysis?.job ?? fallbackJob ?? null;
+  const jobToRefresh =
+    currentAnalysis?.job ??
+    cachedJob ??
+    fallbackJob ??
+    null;
 
   if (!jobToRefresh || (!jobToRefresh.title && !jobToRefresh.company && !jobToRefresh.description)) {
     return;
   }
 
   ui.jobMeta.textContent = "Resume updated. Recalculating match...";
-  await analyzeAndRenderJob(jobToRefresh, profile);
+  try {
+    await analyzeAndRenderJob(jobToRefresh, profile);
+  } catch (error) {
+    ui.jobMeta.textContent = error?.message || "Could not recalculate match after updating resume.";
+  }
+}
+
+async function recomputeAnalysisForJob(job, fallbackProfile = null) {
+  const profile = fallbackProfile ?? await loadProfile();
+  if (!profile?.parsedResume) {
+    return;
+  }
+
+  if (!job || (!job.title && !job.company && !job.description)) {
+    return;
+  }
+
+  ui.jobMeta.textContent = "Job updated. Recalculating match...";
+  try {
+    await analyzeAndRenderJob(job, profile);
+  } catch (error) {
+    ui.jobMeta.textContent = error?.message || "Could not recalculate match after job update.";
+  }
 }
 
 async function readTextFile(file) {
@@ -1001,12 +1040,13 @@ async function handleResumeUpload(event) {
   }
 
   try {
+    const previousAnalysis = await loadCurrentAnalysis();
     ui.profileSummary.textContent = `Reading ${file.name}...`;
     const fileText = await readTextFile(file);
     const profile = await providerRegistry.resumeParser.parseResume(fileText, { fileName: file.name });
     await saveProfile(profile);
     renderProfile(profile);
-    await recomputeAnalysisForProfile(profile);
+    await recomputeAnalysisForProfile(profile, previousAnalysis?.job ?? null);
   } catch (error) {
     ui.profileSummary.textContent =
       error?.message || "Resume upload failed. Use a text-based TXT or DOCX file.";
@@ -1107,6 +1147,14 @@ function analysisNeedsRefresh(analysis, profile) {
   return false;
 }
 
+function analysisNeedsRefreshForJob(analysis, job) {
+  if (!analysis) {
+    return true;
+  }
+
+  return analysis.jobAnalysisKey !== getJobAnalysisKey(job);
+}
+
 async function boot() {
   const [profile, analysis, cachedJob] = await Promise.all([
     loadProfile(),
@@ -1147,7 +1195,9 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     renderProfile(profile);
 
     if (profile?.parsedResume) {
-      recomputeAnalysisForProfile(profile, changes[STORAGE_KEYS.detectedJob]?.newValue ?? null).catch(() => {});
+      recomputeAnalysisForProfile(profile, changes[STORAGE_KEYS.detectedJob]?.newValue ?? null).catch((error) => {
+        ui.jobMeta.textContent = error?.message || "Could not recalculate match after updating resume.";
+      });
     }
   }
 
@@ -1164,6 +1214,18 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
         "",
         job.description || "No job description captured."
       ].join("\n");
+
+      loadProfile().then((profile) => {
+        if (profile?.parsedResume) {
+          loadCurrentAnalysis().then((analysis) => {
+            if (analysisNeedsRefreshForJob(analysis, job) || analysisNeedsRefresh(analysis, profile)) {
+              recomputeAnalysisForJob(job, profile).catch((error) => {
+                ui.jobMeta.textContent = error?.message || "Could not recalculate match after job update.";
+              });
+            }
+          });
+        }
+      });
     }
   }
 });
