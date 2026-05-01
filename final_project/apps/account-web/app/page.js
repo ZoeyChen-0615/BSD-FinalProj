@@ -24,14 +24,14 @@ async function loadRemoteProfile() {
   return payload?.profile ?? null;
 }
 
-async function saveRemoteProfile(profile) {
+async function saveRemoteProfile(profile, email) {
   const response = await fetch("/api/profile", {
     method: "POST",
     credentials: "include",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ profile })
+    body: JSON.stringify({ profile, email })
   });
 
   const payload = await parseJsonResponse(response);
@@ -136,7 +136,7 @@ function AccountDashboard() {
     }
 
     const savedProfile = normalizeProfile(
-      await saveRemoteProfile(nextProfile)
+      await saveRemoteProfile(nextProfile, user.primaryEmailAddress?.emailAddress ?? "")
     );
 
     setProfile(savedProfile);
