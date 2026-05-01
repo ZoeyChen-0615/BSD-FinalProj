@@ -1348,6 +1348,12 @@ async function reconcileProfiles(localProfile, remoteProfile) {
 }
 
 async function refreshResolvedProfile({ reanalyze = true } = {}) {
+  if (!isSignedIn()) {
+    renderProfile(null);
+    renderAnalysis(null);
+    return null;
+  }
+
   const localProfile = normalizeProfile(await loadProfile());
   let resolvedProfile = localProfile;
 
@@ -1490,6 +1496,16 @@ function renderAuthState() {
 }
 
 function renderProfile(profile) {
+  if (!isSignedIn()) {
+    ui.profileSummary.textContent = "Log in to load your synced resume.";
+    ui.resumeFileName.textContent = "Latest resume: none";
+    ui.resumeUploadedAt.textContent = "Uploaded at: --";
+    ui.resumePreview.textContent = "Resume data is hidden until you sign in.";
+    renderList(ui.resumeKeywords, [], () => createTag(""));
+    renderList(ui.resumeSkills, [], () => createTag(""));
+    return;
+  }
+
   const normalizedProfile = normalizeProfile(profile);
   if (!normalizedProfile?.parsedResume) {
     ui.profileSummary.textContent = isAccountView()
@@ -1518,6 +1534,30 @@ function renderProfile(profile) {
 }
 
 function renderAnalysis(analysis) {
+  if (!isSignedIn()) {
+    runtimeState.currentCompany = null;
+    ui.jobMeta.textContent = "Log in to unlock job fit analysis.";
+    ui.jobDescriptionHint.textContent = "";
+    ui.jobPreview.textContent = "Job analysis is hidden until you sign in.";
+    ui.matchScore.textContent = "--";
+    ui.languageSummary.textContent = "Language signals are hidden until you sign in.";
+    ui.coverageBadge.textContent = "Sign in required";
+    ui.wlbValue.textContent = "--";
+    ui.companySize.textContent = "--";
+    ui.industry.textContent = "--";
+    ui.salaryHint.textContent = "--";
+    renderList(ui.requirementsList, [], () => createTag(""));
+    renderList(ui.skillGapList, [], () => createTag(""));
+    renderList(ui.greenFlags, [], () => createTag(""));
+    renderList(ui.redFlags, [], () => createTag(""));
+    renderList(ui.companyPros, [], () => createTag(""));
+    renderList(ui.companyCons, [], () => createTag(""));
+    ui.learningPathList.innerHTML = "";
+    ui.learningPathList.appendChild(createTag("Log in to get learning recommendations.", "chip"));
+    updateFavoriteButton();
+    return;
+  }
+
   if (!analysis) {
     runtimeState.currentCompany = null;
     ui.jobMeta.textContent = "Open a LinkedIn job posting, then click refresh.";
@@ -1659,6 +1699,10 @@ async function syncProfileToSupabase(profile) {
 }
 
 async function recomputeAnalysisForProfile(profile, fallbackJob = null) {
+  if (!isSignedIn()) {
+    return;
+  }
+
   if (!profile?.parsedResume) {
     return;
   }
@@ -1683,6 +1727,10 @@ async function recomputeAnalysisForProfile(profile, fallbackJob = null) {
 }
 
 async function recomputeAnalysisForJob(job, fallbackProfile = null) {
+  if (!isSignedIn()) {
+    return;
+  }
+
   const profile = fallbackProfile ?? await loadProfile();
   if (!profile?.parsedResume) {
     return;
@@ -1792,6 +1840,11 @@ async function readLinkedInJobFromActiveTab() {
 }
 
 async function refreshAnalysis() {
+  if (!isSignedIn()) {
+    ui.jobMeta.textContent = "Log in before refreshing job analysis.";
+    return;
+  }
+
   const profile = await loadProfile();
   if (!profile?.parsedResume) {
     ui.jobMeta.textContent = "Upload a resume before refreshing job analysis.";
@@ -2027,10 +2080,10 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
 
   if (changes[STORAGE_KEYS.profile]) {
-    const profile = changes[STORAGE_KEYS.profile].newValue ?? null;
+    const profile = isSignedIn() ? (changes[STORAGE_KEYS.profile].newValue ?? null) : null;
     renderProfile(profile);
 
-    if (profile?.parsedResume) {
+    if (isSignedIn() && profile?.parsedResume) {
       recomputeAnalysisForProfile(profile, changes[STORAGE_KEYS.detectedJob]?.newValue ?? null).catch((error) => {
         ui.jobMeta.textContent = error?.message || "Could not recalculate match after updating resume.";
       });
@@ -2049,12 +2102,12 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
 
   if (changes[STORAGE_KEYS.currentAnalysis]) {
-    renderAnalysis(changes[STORAGE_KEYS.currentAnalysis].newValue ?? null);
+    renderAnalysis(isSignedIn() ? (changes[STORAGE_KEYS.currentAnalysis].newValue ?? null) : null);
   }
 
   if (changes[STORAGE_KEYS.detectedJob]) {
     const job = changes[STORAGE_KEYS.detectedJob].newValue ?? null;
-    if (job) {
+    if (isSignedIn() && job) {
       ui.jobPreview.textContent = [
         `Company: ${job.company || "Unavailable"}`,
         `Location: ${job.location || "Unavailable"}`,
