@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 
 const SUPABASE_TEMPLATE = "supabase";
 
@@ -71,9 +71,9 @@ export async function GET() {
 export async function POST(request) {
   try {
     const { userId, token } = await getSupabaseContext();
-    const user = await currentUser();
     const body = await request.json();
     const profile = body?.profile ?? null;
+    const email = body?.email ?? null;
 
     if (!profile) {
       return NextResponse.json({ error: "Missing profile payload." }, { status: 400 });
@@ -89,7 +89,7 @@ export async function POST(request) {
         body: JSON.stringify([
           {
             clerk_user_id: userId,
-            email: user?.primaryEmailAddress?.emailAddress ?? null,
+            email,
             profile_json: profile
           }
         ])

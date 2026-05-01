@@ -8,5 +8,4 @@ export const SUPABASE_PROJECT_URL = "https://dookfukissvnwozeatmw.supabase.co";
 export const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRvb2tmdWtpc3N2bndvemVhdG13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2ODgxMTEsImV4cCI6MjA5MTI2NDExMX0.MSPk9lRYmvwwsswOn2wUWNlx90GnLrO-hlPEliM2Uyo";
 
-export const ACCOUNT_APP_URL =
-  "https://bsd-final-proj-3kv4utvg1-zoeychen-0615s-projects.vercel.app";
+export const ACCOUNT_APP_URL = "https://bsd-final-proj.vercel.app";
