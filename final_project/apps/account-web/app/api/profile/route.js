@@ -34,7 +34,7 @@ async function parseResponse(response) {
 }
 
 async function getSupabaseContext() {
-  const { userId, getToken } = auth();
+  const { userId, getToken } = await auth();
   if (!userId) {
     throw new Error("Not signed in.");
   }
