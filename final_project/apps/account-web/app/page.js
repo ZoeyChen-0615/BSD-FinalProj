@@ -5,6 +5,24 @@ import { useEffect, useMemo, useState } from "react";
 import { normalizeProfile } from "../lib/profile";
 import { readResumeText } from "../lib/resume";
 
+function syncAuthToExtension(user) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.postMessage(
+    {
+      source: "workwise-account-web",
+      type: "WORKWISE_AUTH_SYNC",
+      payload: {
+        email: user?.primaryEmailAddress?.emailAddress ?? "",
+        signedIn: Boolean(user?.id)
+      }
+    },
+    window.location.origin
+  );
+}
+
 function syncProfileToExtension(profile, user) {
   if (typeof window === "undefined" || !profile || !user?.id) {
     return;
@@ -79,6 +97,10 @@ function getInitials(name = "") {
 }
 
 function EmptyState() {
+  useEffect(() => {
+    syncAuthToExtension(null);
+  }, []);
+
   return (
     <main className="landing-shell">
       <section className="landing-card">
@@ -119,11 +141,14 @@ function AccountDashboard() {
     async function hydrate() {
       try {
         if (!user?.id) {
+          syncAuthToExtension(null);
           if (!cancelled) {
             setStatus("Sign in to load your WorkWise account.");
           }
           return;
         }
+
+        syncAuthToExtension(user);
 
         const remoteProfile = normalizeProfile(
           await loadRemoteProfile()

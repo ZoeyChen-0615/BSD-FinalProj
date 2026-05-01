@@ -1,4 +1,5 @@
 const STORAGE_KEYS = {
+  authSnapshot: "workwise.authSnapshot",
   profile: "workwise.profile",
   userProfiles: "workwise.userProfiles"
 };
@@ -49,12 +50,34 @@ async function mirrorProfileIntoExtensionStorage(profile, clerkUserId, email) {
   });
 }
 
+function mirrorAuthIntoExtensionStorage(email, signedIn) {
+  chrome.storage.local.set({
+    [STORAGE_KEYS.authSnapshot]: {
+      email: (email || "").trim().toLowerCase(),
+      signedIn: Boolean(signedIn),
+      source: "account-web",
+      syncedAt: new Date().toISOString()
+    }
+  });
+}
+
 window.addEventListener("message", (event) => {
   if (event.source !== window || event.origin !== window.location.origin) {
     return;
   }
 
-  if (event.data?.source !== "workwise-account-web" || event.data?.type !== "WORKWISE_PROFILE_SYNC") {
+  if (event.data?.source !== "workwise-account-web") {
+    return;
+  }
+
+  if (event.data?.type === "WORKWISE_AUTH_SYNC") {
+    const email = event.data?.payload?.email ?? "";
+    const signedIn = event.data?.payload?.signedIn ?? false;
+    mirrorAuthIntoExtensionStorage(email, signedIn);
+    return;
+  }
+
+  if (event.data?.type !== "WORKWISE_PROFILE_SYNC") {
     return;
   }
 

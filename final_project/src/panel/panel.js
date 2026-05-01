@@ -414,7 +414,7 @@ function isAccountView() {
 }
 
 function isSignedIn() {
-  return Boolean(runtimeState.clerkSession);
+  return Boolean(runtimeState.clerkSession || runtimeState.authSnapshot?.signedIn);
 }
 
 function getAccountPageUrl(hash = "") {
@@ -1404,10 +1404,12 @@ async function refreshAuthAndProfile({ reanalyze = true } = {}) {
     setRuntimeAuthState(authState);
     if (runtimeState.clerkSession) {
       await saveAuthSnapshot(runtimeState.authSnapshot);
-    } else if (runtimeState.authSnapshot?.signedIn) {
+    } else if (runtimeState.authSnapshot?.signedIn && runtimeState.authSnapshot?.source === "extension-session") {
       runtimeState.authSnapshot = {
         email: runtimeState.authSnapshot.email || getClerkEmail(runtimeState.clerkUser) || "",
-        signedIn: false
+        signedIn: false,
+        source: "extension-session",
+        syncedAt: new Date().toISOString()
       };
       await saveAuthSnapshot(runtimeState.authSnapshot);
     }
@@ -1427,7 +1429,9 @@ function setRuntimeAuthState(authState) {
   if (authState?.session) {
     runtimeState.authSnapshot = {
       email,
-      signedIn: true
+      signedIn: true,
+      source: "extension-session",
+      syncedAt: new Date().toISOString()
     };
     return;
   }
@@ -1435,7 +1439,9 @@ function setRuntimeAuthState(authState) {
   if (authState?.user && runtimeState.authSnapshot?.signedIn) {
     runtimeState.authSnapshot = {
       email,
-      signedIn: true
+      signedIn: true,
+      source: runtimeState.authSnapshot?.source ?? "extension-session",
+      syncedAt: runtimeState.authSnapshot?.syncedAt ?? new Date().toISOString()
     };
   }
 }
@@ -1465,10 +1471,11 @@ function renderAuthState() {
   const configured = isSupabaseConfigured();
   const signedInEmail = getClerkEmail(runtimeState.clerkUser) || runtimeState.authSnapshot?.email || "";
   const signedIn = isSignedIn();
+  const webLinked = !runtimeState.clerkSession && runtimeState.authSnapshot?.signedIn && runtimeState.authSnapshot?.source === "account-web";
   const hasCachedEmail = !signedIn && Boolean(signedInEmail);
 
   ui.authStack?.classList.toggle("auth-signed-in", signedIn);
-  ui.signOutButton.hidden = !signedIn;
+  ui.signOutButton.hidden = !runtimeState.clerkSession;
   ui.accountAvatar.textContent = getAvatarLabel(signedInEmail);
   ui.accountStatusDot.classList.toggle("is-signed-in", signedIn);
   ui.accountMenuLabel.textContent = signedIn
@@ -1478,11 +1485,14 @@ function renderAuthState() {
   ui.menuOpenAccountButton.hidden = !signedIn || isAccountView();
   ui.menuAuthButton.hidden = signedIn;
   ui.menuResumeButton.hidden = true;
-  ui.menuSignOutButton.hidden = !signedIn;
+  ui.menuSignOutButton.hidden = !runtimeState.clerkSession;
 
-  if (signedIn && signedInEmail) {
+  if (runtimeState.clerkSession && signedInEmail) {
     ui.authBadge.textContent = "Auth: Clerk connected";
     ui.authStatus.textContent = `Signed in as ${signedInEmail}. Switching to the next JD will keep this login and restore the latest uploaded resume + keywords.`;
+  } else if (webLinked && signedInEmail) {
+    ui.authBadge.textContent = "Auth: account page connected";
+    ui.authStatus.textContent = `Signed in on the WorkWise account page as ${signedInEmail}. Resume sync is available, but popup-only actions still require an extension session.`;
   } else if (hasCachedEmail) {
     ui.authBadge.textContent = "Auth: session expired";
     ui.authStatus.textContent = `Saved account ${signedInEmail} was found, but this popup is not currently signed in. Log in here again to pull the latest resume from your web account.`;
