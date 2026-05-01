@@ -414,7 +414,7 @@ function isAccountView() {
 }
 
 function isSignedIn() {
-  return Boolean(runtimeState.clerkSession || runtimeState.authSnapshot?.signedIn);
+  return Boolean(runtimeState.clerkSession);
 }
 
 function getAccountPageUrl(hash = "") {
@@ -1396,7 +1396,13 @@ async function refreshAuthAndProfile({ reanalyze = true } = {}) {
     const authState = await getClerkAuthState();
     runtimeState.authError = "";
     setRuntimeAuthState(authState);
-    if (runtimeState.authSnapshot?.signedIn) {
+    if (runtimeState.clerkSession) {
+      await saveAuthSnapshot(runtimeState.authSnapshot);
+    } else if (runtimeState.authSnapshot?.signedIn) {
+      runtimeState.authSnapshot = {
+        email: runtimeState.authSnapshot.email || getClerkEmail(runtimeState.clerkUser) || "",
+        signedIn: false
+      };
       await saveAuthSnapshot(runtimeState.authSnapshot);
     }
   } catch (error) {
@@ -1453,6 +1459,7 @@ function renderAuthState() {
   const configured = isSupabaseConfigured();
   const signedInEmail = getClerkEmail(runtimeState.clerkUser) || runtimeState.authSnapshot?.email || "";
   const signedIn = isSignedIn();
+  const hasCachedEmail = !signedIn && Boolean(signedInEmail);
 
   ui.authStack?.classList.toggle("auth-signed-in", signedIn);
   ui.signOutButton.hidden = !signedIn;
@@ -1470,6 +1477,9 @@ function renderAuthState() {
   if (signedIn && signedInEmail) {
     ui.authBadge.textContent = "Auth: Clerk connected";
     ui.authStatus.textContent = `Signed in as ${signedInEmail}. Switching to the next JD will keep this login and restore the latest uploaded resume + keywords.`;
+  } else if (hasCachedEmail) {
+    ui.authBadge.textContent = "Auth: session expired";
+    ui.authStatus.textContent = `Saved account ${signedInEmail} was found, but this popup is not currently signed in. Log in here again to pull the latest resume from your web account.`;
   } else if (configured) {
     ui.authBadge.textContent = "Auth: Clerk ready";
     ui.authStatus.textContent = "Log in with Clerk to sync your resume profile via Supabase.";
