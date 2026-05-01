@@ -428,6 +428,64 @@ function formatDebugDate(value) {
   return new Date(timestamp).toLocaleString();
 }
 
+async function loadAccountTabSyncState() {
+  if (!ACCOUNT_APP_URL.trim()) {
+    return { authSnapshot: null, profileState: null };
+  }
+
+  const accountOrigin = new URL(ACCOUNT_APP_URL).origin;
+  const tabs = await chrome.tabs.query({ url: `${accountOrigin}/*` });
+  const accountTab = tabs.find((tab) => tab.active) ?? tabs[0] ?? null;
+
+  if (!accountTab?.id) {
+    return { authSnapshot: null, profileState: null };
+  }
+
+  const results = await chrome.scripting.executeScript({
+    target: { tabId: accountTab.id },
+    func: () => {
+      try {
+        return {
+          authSnapshot: JSON.parse(window.localStorage.getItem("workwise.accountAuthState") || "null"),
+          profileState: JSON.parse(window.localStorage.getItem("workwise.accountProfileState") || "null")
+        };
+      } catch {
+        return {
+          authSnapshot: null,
+          profileState: null
+        };
+      }
+    }
+  });
+
+  return results?.[0]?.result ?? { authSnapshot: null, profileState: null };
+}
+
+async function hydrateFromAccountTab() {
+  const accountTabState = await loadAccountTabSyncState().catch(() => null);
+  if (!accountTabState) {
+    return;
+  }
+
+  if (accountTabState.authSnapshot) {
+    const latestAuthSnapshot = pickLatestAuthSnapshot(runtimeState.authSnapshot, accountTabState.authSnapshot);
+    if (latestAuthSnapshot !== runtimeState.authSnapshot) {
+      runtimeState.authSnapshot = latestAuthSnapshot;
+      await saveAuthSnapshot(latestAuthSnapshot);
+    }
+  }
+
+  const accountProfile = normalizeProfile(accountTabState.profileState?.profile ?? null);
+  if (accountProfile) {
+    const localProfile = normalizeProfile(await loadProfile());
+    const latestProfile = pickLatestProfile(localProfile, accountProfile);
+    if (latestProfile && latestProfile !== localProfile) {
+      await saveProfile(latestProfile);
+      await saveUserScopedProfile(latestProfile);
+    }
+  }
+}
+
 function pickLatestAuthSnapshot(firstSnapshot, secondSnapshot) {
   if (!firstSnapshot) {
     return secondSnapshot ?? null;
@@ -1432,6 +1490,7 @@ function scheduleProfileRefresh() {
 
 async function refreshAuthAndProfile({ reanalyze = true } = {}) {
   try {
+    await hydrateFromAccountTab();
     const authState = await getClerkAuthState();
     runtimeState.authError = "";
     setRuntimeAuthState(authState);

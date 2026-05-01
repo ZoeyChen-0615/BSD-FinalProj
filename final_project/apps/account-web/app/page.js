@@ -5,12 +5,34 @@ import { useEffect, useMemo, useState } from "react";
 import { normalizeProfile } from "../lib/profile";
 import { readResumeText } from "../lib/resume";
 
+const ACCOUNT_AUTH_STATE_KEY = "workwise.accountAuthState";
+const ACCOUNT_PROFILE_STATE_KEY = "workwise.accountProfileState";
+
+function persistAccountSyncState(key, value) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore localStorage write failures in the account page.
+  }
+}
+
 function syncAuthToExtension(user) {
   if (typeof window === "undefined") {
     return "";
   }
 
   const syncedAt = new Date().toISOString();
+  persistAccountSyncState(ACCOUNT_AUTH_STATE_KEY, {
+    email: user?.primaryEmailAddress?.emailAddress ?? "",
+    signedIn: Boolean(user?.id),
+    source: "account-web",
+    syncedAt
+  });
+
   window.postMessage(
     {
       source: "workwise-account-web",
@@ -32,6 +54,13 @@ function syncProfileToExtension(profile, user) {
   }
 
   const syncedAt = new Date().toISOString();
+  persistAccountSyncState(ACCOUNT_PROFILE_STATE_KEY, {
+    clerkUserId: user.id,
+    email: user.primaryEmailAddress?.emailAddress ?? "",
+    profile,
+    syncedAt
+  });
+
   window.postMessage(
     {
       source: "workwise-account-web",
