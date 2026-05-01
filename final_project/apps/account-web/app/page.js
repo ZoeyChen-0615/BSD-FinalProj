@@ -1,10 +1,42 @@
 "use client";
 
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useAuth, useUser } from "@clerk/nextjs";
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useState } from "react";
 import { normalizeProfile } from "../lib/profile";
 import { readResumeText } from "../lib/resume";
-import { getSupabaseToken, loadRemoteProfile, saveRemoteProfile } from "../lib/supabase";
+
+async function parseJsonResponse(response) {
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error || payload?.message || "Request failed.");
+  }
+
+  return payload;
+}
+
+async function loadRemoteProfile() {
+  const response = await fetch("/api/profile", {
+    method: "GET",
+    credentials: "include"
+  });
+
+  const payload = await parseJsonResponse(response);
+  return payload?.profile ?? null;
+}
+
+async function saveRemoteProfile(profile) {
+  const response = await fetch("/api/profile", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ profile })
+  });
+
+  const payload = await parseJsonResponse(response);
+  return payload?.profile ?? profile;
+}
 
 function formatDate(value) {
   if (!value) {
@@ -50,7 +82,6 @@ function EmptyState() {
 }
 
 function AccountDashboard() {
-  const { getToken } = useAuth();
   const { user } = useUser();
   const [profile, setProfile] = useState(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
@@ -68,8 +99,7 @@ function AccountDashboard() {
 
     async function hydrate() {
       try {
-        const token = await getSupabaseToken(getToken);
-        if (!token || !user?.id) {
+        if (!user?.id) {
           if (!cancelled) {
             setStatus("Sign in to load your WorkWise account.");
           }
@@ -77,10 +107,7 @@ function AccountDashboard() {
         }
 
         const remoteProfile = normalizeProfile(
-          await loadRemoteProfile({
-            token,
-            clerkUserId: user.id
-          })
+          await loadRemoteProfile()
         );
 
         if (cancelled) {
@@ -101,21 +128,15 @@ function AccountDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [getToken, user?.id]);
+  }, [user?.id]);
 
   async function persistProfile(nextProfile, successMessage) {
-    const token = await getSupabaseToken(getToken);
-    if (!token || !user?.id) {
+    if (!user?.id) {
       throw new Error("Please sign in again.");
     }
 
     const savedProfile = normalizeProfile(
-      await saveRemoteProfile({
-        token,
-        clerkUserId: user.id,
-        email: user.primaryEmailAddress?.emailAddress ?? "",
-        profile: nextProfile
-      })
+      await saveRemoteProfile(nextProfile)
     );
 
     setProfile(savedProfile);
