@@ -298,15 +298,60 @@ function createLanguageSummary(analysisText, greenFlags, redFlags) {
   return "Language leans neutral to healthy, with some signs of sustainable work practices.";
 }
 
+function buildResumePreview(fileText) {
+  return (fileText || "")
+    .split(/\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 40)
+    .join("\n");
+}
+
+function buildResumeSummary(fileText) {
+  return (fileText || "")
+    .split(/\n/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(" ");
+}
+
+export function normalizeProfile(profile) {
+  if (!profile) {
+    return null;
+  }
+
+  const rawText = profile.resume?.rawText || profile.parsedResume?.preview || "";
+  const normalizedSkills = unique(
+    rawText
+      ? extractSkillsFromText(rawText)
+      : (profile.parsedResume?.skills ?? []).filter(Boolean)
+  );
+
+  return {
+    ...profile,
+    resume: {
+      ...profile.resume,
+      fileName: profile.resume?.fileName ?? "resume.txt",
+      uploadedAt: profile.resume?.uploadedAt ?? new Date().toISOString(),
+      rawText
+    },
+    parsedResume: {
+      ...profile.parsedResume,
+      skills: normalizedSkills,
+      preview: rawText ? buildResumePreview(rawText) : (profile.parsedResume?.preview ?? ""),
+      summary: rawText ? buildResumeSummary(rawText) : (profile.parsedResume?.summary ?? ""),
+      experienceLevel:
+        profile.parsedResume?.experienceLevel ??
+        (/senior|lead|staff/i.test(rawText) ? "Senior" : "Mid-level"),
+      education:
+        profile.parsedResume?.education ??
+        (/master|ms|phd/i.test(rawText) ? "Advanced degree mentioned" : "Education not detected")
+    }
+  };
+}
+
 export const demoResumeParser = {
   async parseResume(fileText, metadata = {}) {
-    const skills = unique(extractSkillsFromText(fileText));
-    const preview = fileText
-      .split(/\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .slice(0, 40)
-      .join("\n");
     const profile = {
       id: "local-demo-user",
       email: "demo@workwise.local",
@@ -317,15 +362,15 @@ export const demoResumeParser = {
         rawText: fileText
       },
       parsedResume: {
-        skills,
-        preview,
-        summary: fileText.split(/\n/).filter(Boolean).slice(0, 3).join(" "),
+        skills: [],
+        preview: "",
+        summary: "",
         experienceLevel: /senior|lead|staff/i.test(fileText) ? "Senior" : "Mid-level",
         education: /master|ms|phd/i.test(fileText) ? "Advanced degree mentioned" : "Education not detected"
       }
     };
 
-    return profile;
+    return normalizeProfile(profile);
   }
 };
 
@@ -603,6 +648,8 @@ async function lookupCompanyFromGlassdoorCsv(companyName) {
     companySize: averageMetric(aggregate.careerOpportunities) ?? "--",
     industry: averageMetric(aggregate.compensationAndBenefits) ?? "--",
     salaryHint: averageMetric(aggregate.workLifeBalance) ?? "--",
+    allPros: aggregate.topPros,
+    allCons: aggregate.lowCons,
     pros: aggregate.topPros.slice(0, 3),
     cons: aggregate.lowCons.slice(0, 3)
   };

@@ -9,9 +9,26 @@
   <body>
     <div class="app-shell">
       <header class="hero">
-        <p class="eyebrow">WorkWise</p>
-        <h1>LinkedIn job fit, without tab switching.</h1>
-        <p class="hero-copy">
+        <div class="hero-top">
+          <div>
+            <p class="eyebrow">WorkWise</p>
+            <h1 id="heroTitle">LinkedIn job fit, without tab switching.</h1>
+          </div>
+          <div class="account-anchor">
+            <button id="accountButton" class="account-button" type="button" aria-expanded="false" aria-haspopup="menu">
+              <span id="accountAvatar" class="account-avatar">G</span>
+              <span id="accountStatusDot" class="account-status-dot"></span>
+            </button>
+            <div id="accountMenu" class="account-menu" hidden>
+              <p id="accountMenuLabel" class="account-menu-label">Not signed in</p>
+              <button id="menuOpenAccountButton" class="menu-item" type="button">Open account page</button>
+              <button id="menuAuthButton" class="menu-item" type="button">Log in / Sign up</button>
+              <button id="menuResumeButton" class="menu-item" type="button">Update resume</button>
+              <button id="menuSignOutButton" class="menu-item menu-item-danger" type="button">Log out</button>
+            </div>
+          </div>
+        </div>
+        <p id="heroCopy" class="hero-copy">
           Upload one resume, open a LinkedIn job, and refresh the panel for fit, language risk, and company work-life balance.
         </p>
       </header>
@@ -20,9 +37,26 @@
         <section class="card">
           <div class="section-head">
             <h2>Profile</h2>
-            <span id="authBadge" class="badge badge-muted">Local demo mode</span>
+            <span id="authBadge" class="badge badge-muted">Auth: Clerk ready</span>
+          </div>
+          <div id="authStack" class="auth-stack">
+            <input id="authEmailInput" class="text-input" type="email" placeholder="Email" />
+            <input id="authPasswordInput" class="text-input" type="password" placeholder="Password" />
+            <div class="button-row">
+              <button id="signUpButton" class="button button-secondary" type="button">Sign Up</button>
+              <button id="signInButton" class="button" type="button">Log In</button>
+              <button id="signOutButton" class="button button-secondary" type="button">Log Out</button>
+            </div>
+            <p id="authStatus" class="hint">Log in with Clerk to sync your resume profile via Supabase.</p>
           </div>
           <p id="profileSummary" class="muted">No resume uploaded yet.</p>
+          <div id="profileMeta" class="profile-meta">
+            <p id="resumeFileName" class="hint">Latest resume: none</p>
+            <p id="resumeUploadedAt" class="hint">Uploaded at: --</p>
+          </div>
+          <button id="openAccountResumeButton" class="button button-secondary resume-web-button" type="button">
+            Manage resume on account page
+          </button>
           <label class="upload">
             <span>Upload Resume (.txt, .docx)</span>
             <input
@@ -31,6 +65,10 @@
               accept=".txt,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             />
           </label>
+          <div class="resume-keywords-block">
+            <p class="debug-label">Latest Keywords</p>
+            <div id="resumeKeywords" class="chip-row"></div>
+          </div>
           <div id="resumeSkills" class="chip-row"></div>
           <div class="resume-debug">
             <p class="debug-label">Extracted Resume Preview</p>
@@ -38,7 +76,7 @@
           </div>
         </section>
 
-        <section class="card">
+        <section class="card account-view-hidden">
           <div class="section-head">
             <h2>Current Job</h2>
             <button id="refreshButton" class="button">Refresh</button>
@@ -51,7 +89,7 @@
           </div>
         </section>
 
-        <section class="card">
+        <section class="card account-view-hidden">
           <div class="section-head">
             <h2>Skills Match</h2>
             <span id="matchScore" class="score-pill">--</span>
@@ -59,7 +97,7 @@
           <div id="requirementsList" class="list"></div>
         </section>
 
-        <section class="card">
+        <section class="card account-view-hidden">
           <div class="section-head">
             <h2>Skill Gap + Learning Path</h2>
           </div>
@@ -67,7 +105,7 @@
           <div id="learningPathList" class="resource-list"></div>
         </section>
 
-        <section class="card">
+        <section class="card account-view-hidden">
           <div class="section-head">
             <h2>Language Signals</h2>
           </div>
@@ -84,10 +122,13 @@
           </div>
         </section>
 
-        <section class="card">
+        <section class="card account-view-hidden">
           <div class="section-head">
             <h2>Company WLB</h2>
-            <span id="coverageBadge" class="badge badge-muted">Awaiting lookup</span>
+            <div class="company-actions">
+              <span id="coverageBadge" class="badge badge-muted">Awaiting lookup</span>
+              <button id="favoriteCompanyButton" class="button button-secondary favorite-button" type="button">Favorite</button>
+            </div>
           </div>
           <div id="companyInsights" class="company-grid">
             <div class="metric">
@@ -118,9 +159,40 @@
             </div>
           </div>
         </section>
+
+        <section class="card favorites-section">
+          <div class="section-head">
+            <h2>Favorite Companies</h2>
+            <span id="favoriteCountBadge" class="badge badge-muted">0 saved</span>
+          </div>
+          <p id="favoriteCompaniesHint" class="hint">Favorite a company from the extension to see it here.</p>
+          <div id="favoriteCompaniesWorkspace" class="favorite-workspace">
+            <div id="favoriteCompaniesList" class="favorite-grid"></div>
+            <aside id="favoriteCompanyDetail" class="favorite-detail-panel" hidden>
+              <div class="section-head">
+                <h2 id="favoriteModalTitle">Company details</h2>
+                <div class="detail-actions">
+                  <button id="removeFavoriteCompanyButton" class="button button-secondary" type="button">Remove</button>
+                  <button id="closeFavoriteModalButton" class="button button-secondary" type="button">Close</button>
+                </div>
+              </div>
+              <p id="favoriteDetailMeta" class="muted">No company details yet.</p>
+              <div class="detail-comments-grid">
+                <div>
+                  <h3>Pros</h3>
+                  <div id="favoriteDetailPros" class="comment-list"></div>
+                </div>
+                <div>
+                  <h3>Cons</h3>
+                  <div id="favoriteDetailCons" class="comment-list"></div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
       </main>
     </div>
 
-    <script type="module" src="./panel.js"></script>
+    <script type="module" src="./panel.bundle.js"></script>
   </body>
 </html>
