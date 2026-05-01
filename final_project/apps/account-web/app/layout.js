@@ -3,7 +3,15 @@ import "./globals.css";
 
 export const metadata = {
   title: "WorkWise Account",
-  description: "Manage your WorkWise account, resume, and favorite companies."
+  description: "Manage your WorkWise account, resume, and favorite companies.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico" }
+    ],
+    shortcut: ["/favicon.ico"],
+    apple: ["/icon.svg"]
+  }
 };
 
 export default function RootLayout({ children }) {
