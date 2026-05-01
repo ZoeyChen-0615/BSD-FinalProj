@@ -3,6 +3,15 @@ import { auth } from "@clerk/nextjs/server";
 
 const SUPABASE_CLERK_JWT_TEMPLATE = "supabase";
 
+class ApiError extends Error {
+  constructor(message, status = 500, details = null) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.details = details;
+  }
+}
+
 function normalizeUrl(url) {
   return (url || "").trim().replace(/\/+$/, "");
 }
@@ -35,7 +44,7 @@ async function parseResponse(response) {
       payload?.error ||
       payload?.message ||
       `Supabase request failed with ${response.status}.`;
-    throw new Error(message);
+    throw new ApiError(message, response.status, payload);
   }
 
   return payload;
@@ -44,12 +53,12 @@ async function parseResponse(response) {
 async function getSupabaseContext() {
   const { userId, getToken } = await auth();
   if (!userId) {
-    throw new Error("Not signed in.");
+    throw new ApiError("Not signed in.", 401);
   }
 
   const supabaseUrl = normalizeUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   if (!supabaseUrl) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL.");
+    throw new ApiError("Missing NEXT_PUBLIC_SUPABASE_URL.", 500);
   }
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -64,12 +73,12 @@ async function getSupabaseContext() {
 
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
   if (!anonKey) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+    throw new ApiError("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY.", 500);
   }
 
   const token = await getToken({ template: SUPABASE_CLERK_JWT_TEMPLATE }).catch(() => null);
   if (!token) {
-    throw new Error(
+    throw new ApiError(
       'Missing Clerk JWT template "supabase". Add it in Clerk -> JWT Templates, or set SUPABASE_SERVICE_ROLE_KEY in Vercel.'
     );
   }
@@ -80,6 +89,21 @@ async function getSupabaseContext() {
     userId,
     supabaseUrl
   };
+}
+
+function buildErrorResponse(error, requestLabel, context = {}) {
+  const status = error instanceof ApiError ? error.status : 500;
+  const message = error?.message || "Unexpected server error.";
+
+  console.error(`[api/profile] ${requestLabel} failed`, {
+    message,
+    status,
+    details: error instanceof ApiError ? error.details : null,
+    context,
+    stack: error?.stack
+  });
+
+  return NextResponse.json({ error: message }, { status });
 }
 
 export async function GET() {
@@ -96,10 +120,11 @@ export async function GET() {
     const rows = await parseResponse(response);
     return NextResponse.json({ profile: rows?.[0]?.profile_json ?? null });
   } catch (error) {
-    return NextResponse.json(
-      { error: error?.message || "Could not load profile." },
-      { status: 500 }
-    );
+    return buildErrorResponse(error, "GET", {
+      hasSupabaseUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+      hasAnonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+      hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)
+    });
   }
 }
 
@@ -138,9 +163,10 @@ export async function POST(request) {
     const rows = await parseResponse(response);
     return NextResponse.json({ profile: rows?.[0]?.profile_json ?? profile });
   } catch (error) {
-    return NextResponse.json(
-      { error: error?.message || "Could not save profile." },
-      { status: 500 }
-    );
+    return buildErrorResponse(error, "POST", {
+      hasSupabaseUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+      hasAnonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+      hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY)
+    });
   }
 }
