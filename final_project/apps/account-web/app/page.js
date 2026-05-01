@@ -163,8 +163,6 @@ function AccountDashboard() {
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [status, setStatus] = useState("Loading your account...");
   const [isUploading, setIsUploading] = useState(false);
-  const [authSyncDebug, setAuthSyncDebug] = useState("--");
-  const [profileSyncDebug, setProfileSyncDebug] = useState("--");
 
   const favorites = useMemo(() => profile?.favoriteCompanies ?? [], [profile]);
   const selectedCompany = useMemo(
@@ -178,14 +176,14 @@ function AccountDashboard() {
     async function hydrate() {
       try {
         if (!user?.id) {
-          setAuthSyncDebug(syncAuthToExtension(null) || "--");
+          syncAuthToExtension(null);
           if (!cancelled) {
             setStatus("Sign in to load your WorkWise account.");
           }
           return;
         }
 
-        setAuthSyncDebug(syncAuthToExtension(user) || "--");
+        syncAuthToExtension(user);
 
         const remoteProfile = normalizeProfile(
           await loadRemoteProfile()
@@ -198,7 +196,7 @@ function AccountDashboard() {
         setProfile(remoteProfile);
         setSelectedCompanyId(remoteProfile?.favoriteCompanies?.[0]?.id ?? "");
         setStatus(remoteProfile?.parsedResume ? "Resume restored from your account." : "No resume uploaded yet.");
-        setProfileSyncDebug(syncProfileToExtension(remoteProfile, user) || "--");
+        syncProfileToExtension(remoteProfile, user);
       } catch (error) {
         if (!cancelled) {
           setStatus(error?.message || "Could not load your account.");
@@ -224,8 +222,8 @@ function AccountDashboard() {
     setProfile(savedProfile);
     setSelectedCompanyId(savedProfile?.favoriteCompanies?.[0]?.id ?? "");
     setStatus(successMessage);
-    setAuthSyncDebug(syncAuthToExtension(user) || "--");
-    setProfileSyncDebug(syncProfileToExtension(savedProfile, user) || "--");
+    syncAuthToExtension(user);
+    syncProfileToExtension(savedProfile, user);
   }
 
   async function handleResumeUpload(event) {
@@ -304,8 +302,6 @@ function AccountDashboard() {
             Latest resume: <strong>{profile?.resume?.fileName ?? "none"}</strong>
           </p>
           <p className="muted-copy">Uploaded at: {formatDate(profile?.resume?.uploadedAt)}</p>
-          <p className="muted-copy">Last login event sent to extension: {formatDate(authSyncDebug)}</p>
-          <p className="muted-copy">Last profile sync sent to extension: {formatDate(profileSyncDebug)}</p>
           <label className="upload-button">
             <span>{isUploading ? "Uploading..." : "Upload Resume (.txt, .docx)"}</span>
             <input

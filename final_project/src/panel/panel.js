@@ -355,7 +355,6 @@ const ui = {
   profileMeta: document.getElementById("profileMeta"),
   resumeFileName: document.getElementById("resumeFileName"),
   resumeUploadedAt: document.getElementById("resumeUploadedAt"),
-  authDebugMeta: document.getElementById("authDebugMeta"),
   openAccountResumeButton: document.getElementById("openAccountResumeButton"),
   resumeInput: document.getElementById("resumeInput"),
   resumeKeywords: document.getElementById("resumeKeywords"),
@@ -1566,7 +1565,7 @@ function renderAuthState() {
     ui.accountMenuLabel.textContent = "Authentication unavailable";
     ui.accountStatusDot.classList.remove("is-signed-in");
     ui.authStack?.classList.remove("auth-signed-in");
-    ui.authDebugMeta.textContent = "Last auth event applied: setup error";
+    ui.refreshButton.disabled = true;
     return;
   }
 
@@ -1575,15 +1574,11 @@ function renderAuthState() {
   const signedIn = isSignedIn();
   const webLinked = !runtimeState.clerkSession && runtimeState.authSnapshot?.signedIn && runtimeState.authSnapshot?.source === "account-web";
   const hasCachedEmail = !signedIn && Boolean(signedInEmail);
-  const authSource = runtimeState.clerkSession ? "extension-session" : (runtimeState.authSnapshot?.source ?? "none");
-  const authSyncedAt = formatDebugDate(runtimeState.authSnapshot?.syncedAt);
-  ui.authDebugMeta.textContent =
-    `Last auth event applied: source=${authSource}; signedIn=${signedIn ? "true" : "false"}; syncedAt=${authSyncedAt}; clerkSession=${runtimeState.clerkSession ? "true" : "false"}; accountTab=${runtimeState.accountTabSyncStatus}`;
-
   ui.authStack?.classList.toggle("auth-signed-in", signedIn);
   ui.signOutButton.hidden = !runtimeState.clerkSession;
   ui.accountAvatar.textContent = getAvatarLabel(signedInEmail);
   ui.accountStatusDot.classList.toggle("is-signed-in", signedIn);
+  ui.refreshButton.disabled = !signedIn;
   ui.accountMenuLabel.textContent = signedIn
     ? `Signed in as ${signedInEmail}`
     : "Not signed in";

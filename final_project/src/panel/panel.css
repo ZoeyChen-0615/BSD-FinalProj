@@ -260,6 +260,13 @@ h3 {
   opacity: 0.96;
 }
 
+.button:disabled {
+  background: rgba(30, 29, 26, 0.08);
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 .button-secondary {
   background: rgba(30, 29, 26, 0.08);
   color: var(--ink);
