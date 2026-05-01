@@ -275,8 +275,8 @@ function AccountDashboard() {
             Latest resume: <strong>{profile?.resume?.fileName ?? "none"}</strong>
           </p>
           <p className="muted-copy">Uploaded at: {formatDate(profile?.resume?.uploadedAt)}</p>
-          <p className="muted-copy">Auth sync debug: {formatDate(authSyncDebug)}</p>
-          <p className="muted-copy">Profile sync debug: {formatDate(profileSyncDebug)}</p>
+          <p className="muted-copy">Last login event sent to extension: {formatDate(authSyncDebug)}</p>
+          <p className="muted-copy">Last profile sync sent to extension: {formatDate(profileSyncDebug)}</p>
           <label className="upload-button">
             <span>{isUploading ? "Uploading..." : "Upload Resume (.txt, .docx)"}</span>
             <input

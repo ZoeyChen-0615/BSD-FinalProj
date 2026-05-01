@@ -1490,7 +1490,7 @@ function renderAuthState() {
     ui.accountMenuLabel.textContent = "Authentication unavailable";
     ui.accountStatusDot.classList.remove("is-signed-in");
     ui.authStack?.classList.remove("auth-signed-in");
-    ui.authDebugMeta.textContent = "Auth sync: setup error";
+    ui.authDebugMeta.textContent = "Last auth event applied: setup error";
     return;
   }
 
@@ -1502,7 +1502,7 @@ function renderAuthState() {
   const authSource = runtimeState.clerkSession ? "extension-session" : (runtimeState.authSnapshot?.source ?? "none");
   const authSyncedAt = formatDebugDate(runtimeState.authSnapshot?.syncedAt);
   ui.authDebugMeta.textContent =
-    `Auth sync: source=${authSource}; signedIn=${signedIn ? "true" : "false"}; syncedAt=${authSyncedAt}; clerkSession=${runtimeState.clerkSession ? "true" : "false"}`;
+    `Last auth event applied: source=${authSource}; signedIn=${signedIn ? "true" : "false"}; syncedAt=${authSyncedAt}; clerkSession=${runtimeState.clerkSession ? "true" : "false"}`;
 
   ui.authStack?.classList.toggle("auth-signed-in", signedIn);
   ui.signOutButton.hidden = !runtimeState.clerkSession;
