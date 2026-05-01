@@ -15,6 +15,7 @@ Copy `.env.example` into Vercel project settings:
 - `CLERK_SECRET_KEY`
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (recommended server-side fallback for `/api/profile`)
 
 ## Vercel setup
 
@@ -31,6 +32,8 @@ Add these URLs in Clerk:
 - `http://localhost:3000`
 - your Vercel preview domain
 - `https://account.workwise.app`
+
+If you do not set `SUPABASE_SERVICE_ROLE_KEY` in Vercel, also create a Clerk JWT template named `supabase`. The API route will fall back to that token plus the Supabase anon key.
 
 ## Supabase setup
 

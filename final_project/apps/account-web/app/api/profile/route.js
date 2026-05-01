@@ -1,22 +1,32 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
+const SUPABASE_CLERK_JWT_TEMPLATE = "supabase";
+
 function normalizeUrl(url) {
   return (url || "").trim().replace(/\/+$/, "");
 }
 
-function buildHeaders(extra = {}) {
+function buildHeaders({ apiKey, bearerToken, extra = {} }) {
   return {
-    apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    apikey: apiKey,
     "Content-Type": "application/json",
-    Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+    Authorization: `Bearer ${bearerToken}`,
     ...extra
   };
 }
 
 async function parseResponse(response) {
   const text = await response.text();
-  const payload = text ? JSON.parse(text) : null;
+  let payload = null;
+
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = { message: text };
+    }
+  }
 
   if (!response.ok) {
     const message =
@@ -32,26 +42,54 @@ async function parseResponse(response) {
 }
 
 async function getSupabaseContext() {
-  const { userId } = await auth();
+  const { userId, getToken } = await auth();
   if (!userId) {
     throw new Error("Not signed in.");
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY.");
+  const supabaseUrl = normalizeUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  if (!supabaseUrl) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL.");
   }
 
-  return { userId };
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (serviceRoleKey) {
+    return {
+      apiKey: serviceRoleKey,
+      bearerToken: serviceRoleKey,
+      userId,
+      supabaseUrl
+    };
+  }
+
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!anonKey) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  }
+
+  const token = await getToken({ template: SUPABASE_CLERK_JWT_TEMPLATE }).catch(() => null);
+  if (!token) {
+    throw new Error(
+      'Missing Clerk JWT template "supabase". Add it in Clerk -> JWT Templates, or set SUPABASE_SERVICE_ROLE_KEY in Vercel.'
+    );
+  }
+
+  return {
+    apiKey: anonKey,
+    bearerToken: token,
+    userId,
+    supabaseUrl
+  };
 }
 
 export async function GET() {
   try {
-    const { userId } = await getSupabaseContext();
+    const { apiKey, bearerToken, userId, supabaseUrl } = await getSupabaseContext();
     const response = await fetch(
-      `${normalizeUrl(process.env.NEXT_PUBLIC_SUPABASE_URL)}/rest/v1/profiles?clerk_user_id=eq.${encodeURIComponent(userId)}&select=profile_json`,
+      `${supabaseUrl}/rest/v1/profiles?clerk_user_id=eq.${encodeURIComponent(userId)}&select=profile_json`,
       {
         method: "GET",
-        headers: buildHeaders()
+        headers: buildHeaders({ apiKey, bearerToken })
       }
     );
 
@@ -67,7 +105,7 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { userId } = await getSupabaseContext();
+    const { apiKey, bearerToken, userId, supabaseUrl } = await getSupabaseContext();
     const body = await request.json();
     const profile = body?.profile ?? null;
     const email = body?.email ?? null;
@@ -77,11 +115,15 @@ export async function POST(request) {
     }
 
     const response = await fetch(
-      `${normalizeUrl(process.env.NEXT_PUBLIC_SUPABASE_URL)}/rest/v1/profiles?on_conflict=clerk_user_id`,
+      `${supabaseUrl}/rest/v1/profiles?on_conflict=clerk_user_id`,
       {
         method: "POST",
         headers: buildHeaders({
-          Prefer: "resolution=merge-duplicates,return=representation"
+          apiKey,
+          bearerToken,
+          extra: {
+            Prefer: "resolution=merge-duplicates,return=representation"
+          }
         }),
         body: JSON.stringify([
           {
