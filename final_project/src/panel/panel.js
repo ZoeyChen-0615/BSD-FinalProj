@@ -1351,14 +1351,18 @@ async function refreshResolvedProfile({ reanalyze = true } = {}) {
   const localProfile = normalizeProfile(await loadProfile());
   let resolvedProfile = localProfile;
 
-  if (!resolvedProfile) {
+  if (runtimeState.clerkSession) {
+    const remoteProfile = await hydrateProfileFromSupabase().catch(() => null);
+    resolvedProfile = await reconcileProfiles(localProfile, remoteProfile);
+    if (resolvedProfile) {
+      await saveUserScopedProfile(resolvedProfile);
+    }
+  } else if (!resolvedProfile) {
     const remoteProfile = await hydrateProfileFromSupabase().catch(() => null);
     resolvedProfile = normalizeProfile(remoteProfile);
     if (resolvedProfile) {
       await saveProfile(resolvedProfile);
     }
-  } else if (runtimeState.clerkSession) {
-    syncProfileToSupabase(resolvedProfile).catch(() => {});
   }
 
   renderProfile(resolvedProfile);
@@ -1919,20 +1923,13 @@ async function handleSignIn() {
     renderFavoriteCompanies();
 
     const localProfile = normalizeProfile(userArchive.profile ?? await loadProfile());
-    if (localProfile) {
-      await saveProfile(localProfile);
-      await saveUserScopedProfile(localProfile);
-      await syncProfileToSupabase(localProfile);
-      renderProfile(localProfile);
-      await recomputeAnalysisForProfile(localProfile);
-    } else {
-      const remoteProfile = await hydrateProfileFromSupabase();
-      if (remoteProfile) {
-        await saveProfile(remoteProfile);
-        await saveUserScopedProfile(remoteProfile);
-        renderProfile(remoteProfile);
-        await recomputeAnalysisForProfile(remoteProfile);
-      }
+    const remoteProfile = await hydrateProfileFromSupabase();
+    const resolvedProfile = await reconcileProfiles(localProfile, remoteProfile);
+
+    if (resolvedProfile) {
+      await saveUserScopedProfile(resolvedProfile);
+      renderProfile(resolvedProfile);
+      await recomputeAnalysisForProfile(resolvedProfile);
     }
 
     ui.authStatus.textContent = `Signed in as ${credentials.email}.`;
