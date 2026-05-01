@@ -7,7 +7,7 @@ import { readResumeText } from "../lib/resume";
 
 function syncAuthToExtension(user) {
   if (typeof window === "undefined") {
-    return;
+    return "";
   }
 
   const syncedAt = new Date().toISOString();
@@ -23,13 +23,15 @@ function syncAuthToExtension(user) {
     },
     window.location.origin
   );
+  return syncedAt;
 }
 
 function syncProfileToExtension(profile, user) {
   if (typeof window === "undefined" || !profile || !user?.id) {
-    return;
+    return "";
   }
 
+  const syncedAt = new Date().toISOString();
   window.postMessage(
     {
       source: "workwise-account-web",
@@ -37,11 +39,13 @@ function syncProfileToExtension(profile, user) {
       payload: {
         clerkUserId: user.id,
         email: user.primaryEmailAddress?.emailAddress ?? "",
-        profile
+        profile,
+        syncedAt
       }
     },
     window.location.origin
   );
+  return syncedAt;
 }
 
 async function parseJsonResponse(response) {
@@ -130,6 +134,8 @@ function AccountDashboard() {
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [status, setStatus] = useState("Loading your account...");
   const [isUploading, setIsUploading] = useState(false);
+  const [authSyncDebug, setAuthSyncDebug] = useState("--");
+  const [profileSyncDebug, setProfileSyncDebug] = useState("--");
 
   const favorites = useMemo(() => profile?.favoriteCompanies ?? [], [profile]);
   const selectedCompany = useMemo(
@@ -143,14 +149,14 @@ function AccountDashboard() {
     async function hydrate() {
       try {
         if (!user?.id) {
-          syncAuthToExtension(null);
+          setAuthSyncDebug(syncAuthToExtension(null) || "--");
           if (!cancelled) {
             setStatus("Sign in to load your WorkWise account.");
           }
           return;
         }
 
-        syncAuthToExtension(user);
+        setAuthSyncDebug(syncAuthToExtension(user) || "--");
 
         const remoteProfile = normalizeProfile(
           await loadRemoteProfile()
@@ -163,7 +169,7 @@ function AccountDashboard() {
         setProfile(remoteProfile);
         setSelectedCompanyId(remoteProfile?.favoriteCompanies?.[0]?.id ?? "");
         setStatus(remoteProfile?.parsedResume ? "Resume restored from your account." : "No resume uploaded yet.");
-        syncProfileToExtension(remoteProfile, user);
+        setProfileSyncDebug(syncProfileToExtension(remoteProfile, user) || "--");
       } catch (error) {
         if (!cancelled) {
           setStatus(error?.message || "Could not load your account.");
@@ -189,7 +195,8 @@ function AccountDashboard() {
     setProfile(savedProfile);
     setSelectedCompanyId(savedProfile?.favoriteCompanies?.[0]?.id ?? "");
     setStatus(successMessage);
-    syncProfileToExtension(savedProfile, user);
+    setAuthSyncDebug(syncAuthToExtension(user) || "--");
+    setProfileSyncDebug(syncProfileToExtension(savedProfile, user) || "--");
   }
 
   async function handleResumeUpload(event) {
@@ -268,6 +275,8 @@ function AccountDashboard() {
             Latest resume: <strong>{profile?.resume?.fileName ?? "none"}</strong>
           </p>
           <p className="muted-copy">Uploaded at: {formatDate(profile?.resume?.uploadedAt)}</p>
+          <p className="muted-copy">Auth sync debug: {formatDate(authSyncDebug)}</p>
+          <p className="muted-copy">Profile sync debug: {formatDate(profileSyncDebug)}</p>
           <label className="upload-button">
             <span>{isUploading ? "Uploading..." : "Upload Resume (.txt, .docx)"}</span>
             <input
