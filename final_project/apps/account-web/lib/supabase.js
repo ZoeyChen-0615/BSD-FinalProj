@@ -2,6 +2,8 @@ function normalizeUrl(url) {
   return (url || "").trim().replace(/\/+$/, "");
 }
 
+export const SUPABASE_CLERK_JWT_TEMPLATE = "supabase";
+
 function buildHeaders(token, extra = {}) {
   return {
     apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -26,6 +28,15 @@ async function parseResponse(response) {
   }
 
   return payload;
+}
+
+export async function getSupabaseToken(getToken) {
+  const token = await getToken({ template: SUPABASE_CLERK_JWT_TEMPLATE }).catch(() => null);
+  if (!token) {
+    throw new Error('Missing Clerk JWT template "supabase". Add it in Clerk -> JWT Templates.');
+  }
+
+  return token;
 }
 
 export async function loadRemoteProfile({ token, clerkUserId }) {

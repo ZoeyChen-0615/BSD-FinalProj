@@ -67,7 +67,11 @@ export async function getClerkAuthState() {
 
 export async function getClerkSessionToken() {
   const clerk = await getClerkClient();
-  return clerk.session?.getToken() ?? null;
+  if (!clerk.session) {
+    return null;
+  }
+
+  return clerk.session.getToken({ template: "supabase" }).catch(() => clerk.session?.getToken() ?? null);
 }
 
 export async function signInWithClerk(credentials) {

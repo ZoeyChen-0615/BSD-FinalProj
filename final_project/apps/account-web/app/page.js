@@ -4,7 +4,7 @@ import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useAuth, u
 import { useEffect, useMemo, useState } from "react";
 import { normalizeProfile } from "../lib/profile";
 import { readResumeText } from "../lib/resume";
-import { loadRemoteProfile, saveRemoteProfile } from "../lib/supabase";
+import { getSupabaseToken, loadRemoteProfile, saveRemoteProfile } from "../lib/supabase";
 
 function formatDate(value) {
   if (!value) {
@@ -68,7 +68,7 @@ function AccountDashboard() {
 
     async function hydrate() {
       try {
-        const token = await getToken();
+        const token = await getSupabaseToken(getToken);
         if (!token || !user?.id) {
           if (!cancelled) {
             setStatus("Sign in to load your WorkWise account.");
@@ -104,7 +104,7 @@ function AccountDashboard() {
   }, [getToken, user?.id]);
 
   async function persistProfile(nextProfile, successMessage) {
-    const token = await getToken();
+    const token = await getSupabaseToken(getToken);
     if (!token || !user?.id) {
       throw new Error("Please sign in again.");
     }
