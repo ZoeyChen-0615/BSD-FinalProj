@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
-const SUPABASE_TEMPLATE = "supabase";
-
 function normalizeUrl(url) {
   return (url || "").trim().replace(/\/+$/, "");
 }
 
-function buildHeaders(token, extra = {}) {
+function buildHeaders(extra = {}) {
   return {
-    apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
+    Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
     ...extra
   };
 }
@@ -34,27 +32,26 @@ async function parseResponse(response) {
 }
 
 async function getSupabaseContext() {
-  const { userId, getToken } = await auth();
+  const { userId } = await auth();
   if (!userId) {
     throw new Error("Not signed in.");
   }
 
-  const token = await getToken({ template: SUPABASE_TEMPLATE }).catch(() => null);
-  if (!token) {
-    throw new Error('Missing Clerk JWT template "supabase".');
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY.");
   }
 
-  return { userId, token };
+  return { userId };
 }
 
 export async function GET() {
   try {
-    const { userId, token } = await getSupabaseContext();
+    const { userId } = await getSupabaseContext();
     const response = await fetch(
       `${normalizeUrl(process.env.NEXT_PUBLIC_SUPABASE_URL)}/rest/v1/profiles?clerk_user_id=eq.${encodeURIComponent(userId)}&select=profile_json`,
       {
         method: "GET",
-        headers: buildHeaders(token)
+        headers: buildHeaders()
       }
     );
 
@@ -70,7 +67,7 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { userId, token } = await getSupabaseContext();
+    const { userId } = await getSupabaseContext();
     const body = await request.json();
     const profile = body?.profile ?? null;
     const email = body?.email ?? null;
@@ -83,7 +80,7 @@ export async function POST(request) {
       `${normalizeUrl(process.env.NEXT_PUBLIC_SUPABASE_URL)}/rest/v1/profiles?on_conflict=clerk_user_id`,
       {
         method: "POST",
-        headers: buildHeaders(token, {
+        headers: buildHeaders({
           Prefer: "resolution=merge-duplicates,return=representation"
         }),
         body: JSON.stringify([
