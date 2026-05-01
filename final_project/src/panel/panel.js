@@ -402,6 +402,7 @@ const runtimeState = {
   clerkSession: null,
   authError: "",
   authSnapshot: null,
+  accountTabSyncStatus: "idle",
   currentView: new URLSearchParams(window.location.search).get("view") === "account" ? "account" : "popup",
   profileRefreshTimer: null,
   isUploadingResume: false,
@@ -430,15 +431,22 @@ function formatDebugDate(value) {
 
 async function loadAccountTabSyncState() {
   if (!ACCOUNT_APP_URL.trim()) {
-    return { authSnapshot: null, profileState: null };
+    return { authSnapshot: null, profileState: null, status: "account-url-missing" };
   }
 
   const accountOrigin = new URL(ACCOUNT_APP_URL).origin;
-  const tabs = await chrome.tabs.query({ url: `${accountOrigin}/*` });
-  const accountTab = tabs.find((tab) => tab.active) ?? tabs[0] ?? null;
+  const tabs = await chrome.tabs.query({});
+  const accountTabs = tabs.filter((tab) => {
+    try {
+      return tab.url && new URL(tab.url).origin === accountOrigin;
+    } catch {
+      return false;
+    }
+  });
+  const accountTab = accountTabs.find((tab) => tab.active) ?? accountTabs[0] ?? null;
 
   if (!accountTab?.id) {
-    return { authSnapshot: null, profileState: null };
+    return { authSnapshot: null, profileState: null, status: "account-tab-not-found" };
   }
 
   const results = await chrome.scripting.executeScript({
@@ -458,14 +466,23 @@ async function loadAccountTabSyncState() {
     }
   });
 
-  return results?.[0]?.result ?? { authSnapshot: null, profileState: null };
+  return {
+    ...(results?.[0]?.result ?? { authSnapshot: null, profileState: null }),
+    status: "ok"
+  };
 }
 
 async function hydrateFromAccountTab() {
-  const accountTabState = await loadAccountTabSyncState().catch(() => null);
+  const accountTabState = await loadAccountTabSyncState().catch((error) => ({
+    authSnapshot: null,
+    profileState: null,
+    status: error?.message || "account-tab-read-failed"
+  }));
   if (!accountTabState) {
     return;
   }
+
+  runtimeState.accountTabSyncStatus = accountTabState.status ?? "unknown";
 
   if (accountTabState.authSnapshot) {
     const latestAuthSnapshot = pickLatestAuthSnapshot(runtimeState.authSnapshot, accountTabState.authSnapshot);
@@ -1561,7 +1578,7 @@ function renderAuthState() {
   const authSource = runtimeState.clerkSession ? "extension-session" : (runtimeState.authSnapshot?.source ?? "none");
   const authSyncedAt = formatDebugDate(runtimeState.authSnapshot?.syncedAt);
   ui.authDebugMeta.textContent =
-    `Last auth event applied: source=${authSource}; signedIn=${signedIn ? "true" : "false"}; syncedAt=${authSyncedAt}; clerkSession=${runtimeState.clerkSession ? "true" : "false"}`;
+    `Last auth event applied: source=${authSource}; signedIn=${signedIn ? "true" : "false"}; syncedAt=${authSyncedAt}; clerkSession=${runtimeState.clerkSession ? "true" : "false"}; accountTab=${runtimeState.accountTabSyncStatus}`;
 
   ui.authStack?.classList.toggle("auth-signed-in", signedIn);
   ui.signOutButton.hidden = !runtimeState.clerkSession;
