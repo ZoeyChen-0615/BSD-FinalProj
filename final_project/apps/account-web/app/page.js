@@ -10,13 +10,15 @@ function syncAuthToExtension(user) {
     return;
   }
 
+  const syncedAt = new Date().toISOString();
   window.postMessage(
     {
       source: "workwise-account-web",
       type: "WORKWISE_AUTH_SYNC",
       payload: {
         email: user?.primaryEmailAddress?.emailAddress ?? "",
-        signedIn: Boolean(user?.id)
+        signedIn: Boolean(user?.id),
+        syncedAt
       }
     },
     window.location.origin

@@ -4,6 +4,25 @@ const STORAGE_KEYS = {
   userProfiles: "workwise.userProfiles"
 };
 
+function getAuthSnapshotMs(snapshot) {
+  const timestamp = snapshot?.syncedAt ? Date.parse(snapshot.syncedAt) : Number.NaN;
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function pickLatestAuthSnapshot(firstSnapshot, secondSnapshot) {
+  if (!firstSnapshot) {
+    return secondSnapshot ?? null;
+  }
+
+  if (!secondSnapshot) {
+    return firstSnapshot;
+  }
+
+  return getAuthSnapshotMs(secondSnapshot) > getAuthSnapshotMs(firstSnapshot)
+    ? secondSnapshot
+    : firstSnapshot;
+}
+
 function getUploadedAtMs(profile) {
   const timestamp = profile?.resume?.uploadedAt ? Date.parse(profile.resume.uploadedAt) : Number.NaN;
   return Number.isFinite(timestamp) ? timestamp : 0;
@@ -50,14 +69,19 @@ async function mirrorProfileIntoExtensionStorage(profile, clerkUserId, email) {
   });
 }
 
-function mirrorAuthIntoExtensionStorage(email, signedIn) {
-  chrome.storage.local.set({
-    [STORAGE_KEYS.authSnapshot]: {
-      email: (email || "").trim().toLowerCase(),
-      signedIn: Boolean(signedIn),
-      source: "account-web",
-      syncedAt: new Date().toISOString()
-    }
+function mirrorAuthIntoExtensionStorage(email, signedIn, syncedAt) {
+  const nextSnapshot = {
+    email: (email || "").trim().toLowerCase(),
+    signedIn: Boolean(signedIn),
+    source: "account-web",
+    syncedAt: syncedAt || new Date().toISOString()
+  };
+
+  chrome.storage.local.get([STORAGE_KEYS.authSnapshot], (result) => {
+    const latestSnapshot = pickLatestAuthSnapshot(result?.[STORAGE_KEYS.authSnapshot] ?? null, nextSnapshot);
+    chrome.storage.local.set({
+      [STORAGE_KEYS.authSnapshot]: latestSnapshot
+    });
   });
 }
 
@@ -73,7 +97,8 @@ window.addEventListener("message", (event) => {
   if (event.data?.type === "WORKWISE_AUTH_SYNC") {
     const email = event.data?.payload?.email ?? "";
     const signedIn = event.data?.payload?.signedIn ?? false;
-    mirrorAuthIntoExtensionStorage(email, signedIn);
+    const syncedAt = event.data?.payload?.syncedAt ?? "";
+    mirrorAuthIntoExtensionStorage(email, signedIn, syncedAt);
     return;
   }
 

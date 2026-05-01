@@ -409,6 +409,25 @@ const runtimeState = {
   selectedFavoriteCompany: null
 };
 
+function getAuthSnapshotMs(snapshot) {
+  const timestamp = snapshot?.syncedAt ? Date.parse(snapshot.syncedAt) : Number.NaN;
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function pickLatestAuthSnapshot(firstSnapshot, secondSnapshot) {
+  if (!firstSnapshot) {
+    return secondSnapshot ?? null;
+  }
+
+  if (!secondSnapshot) {
+    return firstSnapshot;
+  }
+
+  return getAuthSnapshotMs(secondSnapshot) > getAuthSnapshotMs(firstSnapshot)
+    ? secondSnapshot
+    : firstSnapshot;
+}
+
 function isAccountView() {
   return runtimeState.currentView === "account";
 }
@@ -1404,14 +1423,6 @@ async function refreshAuthAndProfile({ reanalyze = true } = {}) {
     setRuntimeAuthState(authState);
     if (runtimeState.clerkSession) {
       await saveAuthSnapshot(runtimeState.authSnapshot);
-    } else if (runtimeState.authSnapshot?.signedIn && runtimeState.authSnapshot?.source === "extension-session") {
-      runtimeState.authSnapshot = {
-        email: runtimeState.authSnapshot.email || getClerkEmail(runtimeState.clerkUser) || "",
-        signedIn: false,
-        source: "extension-session",
-        syncedAt: new Date().toISOString()
-      };
-      await saveAuthSnapshot(runtimeState.authSnapshot);
     }
   } catch (error) {
     runtimeState.authError = error?.message || "Clerk failed to initialize.";
@@ -1427,12 +1438,12 @@ function setRuntimeAuthState(authState) {
   const email = getClerkEmail(authState?.user) || runtimeState.authSnapshot?.email || "";
 
   if (authState?.session) {
-    runtimeState.authSnapshot = {
+    runtimeState.authSnapshot = pickLatestAuthSnapshot(runtimeState.authSnapshot, {
       email,
       signedIn: true,
       source: "extension-session",
       syncedAt: new Date().toISOString()
-    };
+    });
     return;
   }
 
@@ -2021,8 +2032,13 @@ async function handleSignOut() {
     const authState = await signOutFromClerk();
     runtimeState.authError = "";
     setRuntimeAuthState(authState);
-    runtimeState.authSnapshot = null;
-    await saveAuthSnapshot(null);
+    runtimeState.authSnapshot = {
+      email: runtimeState.authSnapshot?.email || "",
+      signedIn: false,
+      source: "extension-session",
+      syncedAt: new Date().toISOString()
+    };
+    await saveAuthSnapshot(runtimeState.authSnapshot);
     runtimeState.favoriteCompanies = [];
     runtimeState.currentCompany = null;
     closeFavoriteCompanyModal();
