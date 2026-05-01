@@ -5,6 +5,25 @@ import { useEffect, useMemo, useState } from "react";
 import { normalizeProfile } from "../lib/profile";
 import { readResumeText } from "../lib/resume";
 
+function syncProfileToExtension(profile, user) {
+  if (typeof window === "undefined" || !profile || !user?.id) {
+    return;
+  }
+
+  window.postMessage(
+    {
+      source: "workwise-account-web",
+      type: "WORKWISE_PROFILE_SYNC",
+      payload: {
+        clerkUserId: user.id,
+        email: user.primaryEmailAddress?.emailAddress ?? "",
+        profile
+      }
+    },
+    window.location.origin
+  );
+}
+
 async function parseJsonResponse(response) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -117,6 +136,7 @@ function AccountDashboard() {
         setProfile(remoteProfile);
         setSelectedCompanyId(remoteProfile?.favoriteCompanies?.[0]?.id ?? "");
         setStatus(remoteProfile?.parsedResume ? "Resume restored from your account." : "No resume uploaded yet.");
+        syncProfileToExtension(remoteProfile, user);
       } catch (error) {
         if (!cancelled) {
           setStatus(error?.message || "Could not load your account.");
@@ -142,6 +162,7 @@ function AccountDashboard() {
     setProfile(savedProfile);
     setSelectedCompanyId(savedProfile?.favoriteCompanies?.[0]?.id ?? "");
     setStatus(successMessage);
+    syncProfileToExtension(savedProfile, user);
   }
 
   async function handleResumeUpload(event) {

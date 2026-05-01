@@ -12,7 +12,8 @@
   "host_permissions": [
     "https://www.linkedin.com/*",
     "https://*.supabase.co/*",
-    "https://alive-teal-28.clerk.accounts.dev/*"
+    "https://alive-teal-28.clerk.accounts.dev/*",
+    "https://bsd-final-proj.vercel.app/*"
   ],
   "action": {
     "default_title": "Open WorkWise",
@@ -25,6 +26,15 @@
       ],
       "js": [
         "src/content/jobWatcher.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://bsd-final-proj.vercel.app/*"
+      ],
+      "js": [
+        "src/content/accountSync.js"
       ],
       "run_at": "document_idle"
     }
