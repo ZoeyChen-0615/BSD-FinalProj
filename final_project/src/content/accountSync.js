@@ -1,7 +1,9 @@
 const STORAGE_KEYS = {
   authSnapshot: "workwise.authSnapshot",
   profile: "workwise.profile",
-  userProfiles: "workwise.userProfiles"
+  userProfiles: "workwise.userProfiles",
+  favoriteCompanies: "workwise.favoriteCompanies",
+  userFavoriteCompanies: "workwise.userFavoriteCompanies"
 };
 
 function getAuthSnapshotMs(snapshot) {
@@ -51,22 +53,32 @@ function normalizeUserKeys(clerkUserId, email) {
 
 async function mirrorProfileIntoExtensionStorage(profile, clerkUserId, email) {
   const userKeys = normalizeUserKeys(clerkUserId, email);
+  const favoriteCompanies = Array.isArray(profile?.favoriteCompanies) ? profile.favoriteCompanies : [];
 
-  chrome.storage.local.get([STORAGE_KEYS.profile, STORAGE_KEYS.userProfiles], (result) => {
+  chrome.storage.local.get(
+    [STORAGE_KEYS.profile, STORAGE_KEYS.userProfiles, STORAGE_KEYS.favoriteCompanies, STORAGE_KEYS.userFavoriteCompanies],
+    (result) => {
     const latestProfile = pickLatestProfile(result?.[STORAGE_KEYS.profile] ?? null, profile);
     const nextUserProfiles = {
       ...(result?.[STORAGE_KEYS.userProfiles] ?? {})
     };
+    const nextUserFavoriteCompanies = {
+      ...(result?.[STORAGE_KEYS.userFavoriteCompanies] ?? {})
+    };
 
     userKeys.forEach((userKey) => {
       nextUserProfiles[userKey] = pickLatestProfile(nextUserProfiles[userKey] ?? null, profile);
+      nextUserFavoriteCompanies[userKey] = favoriteCompanies;
     });
 
     chrome.storage.local.set({
       [STORAGE_KEYS.profile]: latestProfile,
-      [STORAGE_KEYS.userProfiles]: nextUserProfiles
+      [STORAGE_KEYS.userProfiles]: nextUserProfiles,
+      [STORAGE_KEYS.favoriteCompanies]: favoriteCompanies,
+      [STORAGE_KEYS.userFavoriteCompanies]: nextUserFavoriteCompanies
     });
-  });
+  }
+  );
 }
 
 function mirrorAuthIntoExtensionStorage(email, signedIn, syncedAt) {
