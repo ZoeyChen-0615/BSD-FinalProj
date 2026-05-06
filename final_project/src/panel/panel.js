@@ -471,6 +471,66 @@ async function loadAccountTabSyncState() {
   };
 }
 
+async function findAccountTab() {
+  if (!ACCOUNT_APP_URL.trim()) {
+    return null;
+  }
+
+  const accountOrigin = new URL(ACCOUNT_APP_URL).origin;
+  const tabs = await chrome.tabs.query({});
+  const accountTabs = tabs.filter((tab) => {
+    try {
+      return tab.url && new URL(tab.url).origin === accountOrigin;
+    } catch {
+      return false;
+    }
+  });
+
+  return accountTabs.find((tab) => tab.active) ?? accountTabs[0] ?? null;
+}
+
+async function syncProfileViaAccountTab(profile) {
+  const accountTab = await findAccountTab();
+  if (!accountTab?.id || !runtimeState.authSnapshot?.signedIn) {
+    return profile;
+  }
+
+  const response = await chrome.scripting.executeScript({
+    target: { tabId: accountTab.id },
+    args: [attachFavoriteCompaniesToProfile(profile), getClerkEmail(runtimeState.clerkUser) || runtimeState.authSnapshot?.email || ""],
+    func: async (nextProfile, email) => {
+      const response = await fetch("/api/profile", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ profile: nextProfile, email })
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || payload?.message || "Account page profile sync failed.");
+      }
+
+      try {
+        window.localStorage.setItem("workwise.accountProfileState", JSON.stringify({
+          clerkUserId: "",
+          email,
+          profile: payload?.profile ?? nextProfile,
+          syncedAt: new Date().toISOString()
+        }));
+      } catch {
+        // Ignore localStorage mirror failures in the account tab.
+      }
+
+      return payload?.profile ?? nextProfile;
+    }
+  });
+
+  return normalizeProfile(response?.[0]?.result ?? profile);
+}
+
 async function hydrateFromAccountTab() {
   const accountTabState = await loadAccountTabSyncState().catch((error) => ({
     authSnapshot: null,
@@ -1792,21 +1852,25 @@ async function analyzeAndRenderJob(job, profile) {
 }
 
 async function syncProfileToSupabase(profile) {
-  if (!isSupabaseConfigured() || !runtimeState.clerkUser?.id || !runtimeState.clerkSession) {
+  if (!isSupabaseConfigured()) {
     return profile;
   }
 
-  const token = await getClerkSessionToken();
-  if (!token) {
-    return profile;
+  if (runtimeState.clerkUser?.id && runtimeState.clerkSession) {
+    const token = await getClerkSessionToken();
+    if (!token) {
+      return profile;
+    }
+
+    return saveRemoteProfile({
+      token,
+      clerkUserId: runtimeState.clerkUser.id,
+      email: getClerkEmail(runtimeState.clerkUser),
+      profile: attachFavoriteCompaniesToProfile(profile)
+    });
   }
 
-  return saveRemoteProfile({
-    token,
-    clerkUserId: runtimeState.clerkUser.id,
-    email: getClerkEmail(runtimeState.clerkUser),
-    profile: attachFavoriteCompaniesToProfile(profile)
-  });
+  return syncProfileViaAccountTab(profile).catch(() => profile);
 }
 
 async function recomputeAnalysisForProfile(profile, fallbackJob = null) {
