@@ -122888,10 +122888,8 @@ var require_panel = __commonJS({
         return;
       }
       await saveUserScopedProfile(activeProfile);
-      if (runtimeState.clerkSession) {
-        syncProfileToSupabase(activeProfile).catch(() => {
-        });
-      }
+      syncProfileToSupabase(activeProfile).catch(() => {
+      });
     }
     function createTag(label, className = "chip") {
       const element = document.createElement("span");

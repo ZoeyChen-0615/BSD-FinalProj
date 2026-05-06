@@ -743,10 +743,7 @@ async function saveUserScopedFavoriteCompanies(favoriteCompanies) {
   }
 
   await saveUserScopedProfile(activeProfile);
-
-  if (runtimeState.clerkSession) {
-    syncProfileToSupabase(activeProfile).catch(() => {});
-  }
+  syncProfileToSupabase(activeProfile).catch(() => {});
 }
 
 function createTag(label, className = "chip") {
