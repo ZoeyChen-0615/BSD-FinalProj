@@ -122696,6 +122696,7 @@ var require_panel = __commonJS({
       const accountProfileApiUrl = new URL("/api/profile", ACCOUNT_APP_URL).toString();
       const response = await chrome.scripting.executeScript({
         target: { tabId: accountTab.id },
+        world: "MAIN",
         args: [
           attachFavoriteCompaniesToProfile(profile),
           getClerkEmail(runtimeState.clerkUser) || runtimeState.authSnapshot?.email || "",
