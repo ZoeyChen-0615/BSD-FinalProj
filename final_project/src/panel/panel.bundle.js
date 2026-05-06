@@ -122693,10 +122693,15 @@ var require_panel = __commonJS({
       if (!accountTab?.id || !runtimeState.authSnapshot?.signedIn) {
         return profile;
       }
+      const accountProfileApiUrl = new URL("/api/profile", ACCOUNT_APP_URL).toString();
       const response = await chrome.scripting.executeScript({
         target: { tabId: accountTab.id },
-        args: [attachFavoriteCompaniesToProfile(profile), getClerkEmail(runtimeState.clerkUser) || runtimeState.authSnapshot?.email || ""],
-        func: async (nextProfile, email) => {
+        args: [
+          attachFavoriteCompaniesToProfile(profile),
+          getClerkEmail(runtimeState.clerkUser) || runtimeState.authSnapshot?.email || "",
+          accountProfileApiUrl
+        ],
+        func: async (nextProfile, email, accountApiUrl) => {
           try {
             window.localStorage.setItem("workwise.accountProfileState", JSON.stringify({
               clerkUserId: "",
@@ -122706,7 +122711,7 @@ var require_panel = __commonJS({
             }));
           } catch {
           }
-          const response2 = await fetch("/api/profile", {
+          const response2 = await fetch(accountApiUrl, {
             method: "POST",
             credentials: "include",
             headers: {

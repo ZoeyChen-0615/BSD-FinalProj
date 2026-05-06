@@ -495,10 +495,15 @@ async function syncProfileViaAccountTab(profile) {
     return profile;
   }
 
+  const accountProfileApiUrl = new URL("/api/profile", ACCOUNT_APP_URL).toString();
   const response = await chrome.scripting.executeScript({
     target: { tabId: accountTab.id },
-    args: [attachFavoriteCompaniesToProfile(profile), getClerkEmail(runtimeState.clerkUser) || runtimeState.authSnapshot?.email || ""],
-    func: async (nextProfile, email) => {
+    args: [
+      attachFavoriteCompaniesToProfile(profile),
+      getClerkEmail(runtimeState.clerkUser) || runtimeState.authSnapshot?.email || "",
+      accountProfileApiUrl
+    ],
+    func: async (nextProfile, email, accountApiUrl) => {
       try {
         window.localStorage.setItem("workwise.accountProfileState", JSON.stringify({
           clerkUserId: "",
@@ -510,7 +515,7 @@ async function syncProfileViaAccountTab(profile) {
         // Ignore localStorage mirror failures in the account tab.
       }
 
-      const response = await fetch("/api/profile", {
+      const response = await fetch(accountApiUrl, {
         method: "POST",
         credentials: "include",
         headers: {
