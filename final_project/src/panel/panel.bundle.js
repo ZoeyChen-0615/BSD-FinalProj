@@ -122697,6 +122697,15 @@ var require_panel = __commonJS({
         target: { tabId: accountTab.id },
         args: [attachFavoriteCompaniesToProfile(profile), getClerkEmail(runtimeState.clerkUser) || runtimeState.authSnapshot?.email || ""],
         func: async (nextProfile, email) => {
+          try {
+            window.localStorage.setItem("workwise.accountProfileState", JSON.stringify({
+              clerkUserId: "",
+              email,
+              profile: nextProfile,
+              syncedAt: (/* @__PURE__ */ new Date()).toISOString()
+            }));
+          } catch {
+          }
           const response2 = await fetch("/api/profile", {
             method: "POST",
             credentials: "include",

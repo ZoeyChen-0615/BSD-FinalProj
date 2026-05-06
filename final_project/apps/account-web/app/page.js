@@ -20,6 +20,54 @@ function persistAccountSyncState(key, value) {
   }
 }
 
+function readAccountSyncState(key) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    return JSON.parse(window.localStorage.getItem(key) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function getLatestFavoriteSavedAt(favoriteCompanies = []) {
+  if (!Array.isArray(favoriteCompanies) || !favoriteCompanies.length) {
+    return 0;
+  }
+
+  return favoriteCompanies.reduce((latest, company) => {
+    const timestamp = company?.savedAt ? Date.parse(company.savedAt) : Number.NaN;
+    return Number.isFinite(timestamp) && timestamp > latest ? timestamp : latest;
+  }, 0);
+}
+
+function mergeMirroredProfile(remoteProfile, mirroredProfile) {
+  const normalizedRemote = normalizeProfile(remoteProfile);
+  const normalizedMirrored = normalizeProfile(mirroredProfile);
+
+  if (!normalizedRemote) {
+    return normalizedMirrored;
+  }
+
+  if (!normalizedMirrored) {
+    return normalizedRemote;
+  }
+
+  const remoteFavoriteMs = getLatestFavoriteSavedAt(normalizedRemote.favoriteCompanies);
+  const mirroredFavoriteMs = getLatestFavoriteSavedAt(normalizedMirrored.favoriteCompanies);
+
+  if (mirroredFavoriteMs > remoteFavoriteMs) {
+    return normalizeProfile({
+      ...normalizedRemote,
+      favoriteCompanies: normalizedMirrored.favoriteCompanies
+    });
+  }
+
+  return normalizedRemote;
+}
+
 function syncAuthToExtension(user) {
   if (typeof window === "undefined") {
     return "";
@@ -185,18 +233,18 @@ function AccountDashboard() {
 
         syncAuthToExtension(user);
 
-        const remoteProfile = normalizeProfile(
-          await loadRemoteProfile()
-        );
+        const remoteProfile = await loadRemoteProfile();
+        const mirroredProfile = readAccountSyncState(ACCOUNT_PROFILE_STATE_KEY)?.profile ?? null;
+        const resolvedProfile = mergeMirroredProfile(remoteProfile, mirroredProfile);
 
         if (cancelled) {
           return;
         }
 
-        setProfile(remoteProfile);
-        setSelectedCompanyId(remoteProfile?.favoriteCompanies?.[0]?.id ?? "");
-        setStatus(remoteProfile?.parsedResume ? "Resume restored from your account." : "No resume uploaded yet.");
-        syncProfileToExtension(remoteProfile, user);
+        setProfile(resolvedProfile);
+        setSelectedCompanyId(resolvedProfile?.favoriteCompanies?.[0]?.id ?? "");
+        setStatus(resolvedProfile?.parsedResume ? "Resume restored from your account." : "No resume uploaded yet.");
+        syncProfileToExtension(resolvedProfile, user);
       } catch (error) {
         if (!cancelled) {
           setStatus(error?.message || "Could not load your account.");
