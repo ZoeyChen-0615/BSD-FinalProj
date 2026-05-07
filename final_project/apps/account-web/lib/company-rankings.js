@@ -1,36 +1,6 @@
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
-
-function parseCsvLine(line) {
-  const cells = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-
-    if (char === "\"") {
-      if (inQuotes && line[index + 1] === "\"") {
-        current += "\"";
-        index += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      cells.push(current);
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  cells.push(current);
-  return cells.map((cell) => cell.trim());
-}
+import { parse } from "csv-parse/sync";
 
 function createMetricTracker() {
   return { sum: 0, count: 0 };
@@ -92,26 +62,16 @@ async function resolveCsvPath() {
 async function buildCompanyIndex() {
   const csvPath = await resolveCsvPath();
   const csvText = await readFile(csvPath, "utf8");
-  const lines = csvText.split(/\r?\n/).filter(Boolean);
-
-  if (lines.length <= 1) {
-    return new Map();
-  }
-
-  const headers = parseCsvLine(lines[0]);
-  const companyColumn = headers.indexOf("firm_name");
-  const ratingColumn = headers.indexOf("rating");
-  const prosColumn = headers.indexOf("pros");
-  const consColumn = headers.indexOf("cons");
-  const careerColumn = headers.indexOf("Career Opportunities");
-  const compensationColumn = headers.indexOf("Compensation and Benefits");
-  const wlbColumn = headers.indexOf("Work/Life Balance");
+  const rows = parse(csvText, {
+    columns: true,
+    skip_empty_lines: true,
+    relax_quotes: true
+  });
 
   const companyIndex = new Map();
 
-  for (const line of lines.slice(1)) {
-    const row = parseCsvLine(line);
-    const companyName = row[companyColumn]?.trim();
+  for (const row of rows) {
+    const companyName = row.firm_name?.trim();
     if (!companyName) {
       continue;
     }
@@ -131,12 +91,12 @@ async function buildCompanyIndex() {
     }
 
     const aggregate = companyIndex.get(companyKey);
-    appendMetric(aggregate.rating, row[ratingColumn]);
-    appendMetric(aggregate.careerOpportunities, row[careerColumn]);
-    appendMetric(aggregate.compensationAndBenefits, row[compensationColumn]);
-    appendMetric(aggregate.workLifeBalance, row[wlbColumn]);
-    appendUniqueSnippet(aggregate.topPros, row[prosColumn]);
-    appendUniqueSnippet(aggregate.lowCons, row[consColumn]);
+    appendMetric(aggregate.rating, row.rating);
+    appendMetric(aggregate.careerOpportunities, row["Career Opportunities"]);
+    appendMetric(aggregate.compensationAndBenefits, row["Compensation and Benefits"]);
+    appendMetric(aggregate.workLifeBalance, row["Work/Life Balance"]);
+    appendUniqueSnippet(aggregate.topPros, row.pros);
+    appendUniqueSnippet(aggregate.lowCons, row.cons);
   }
 
   return companyIndex;
