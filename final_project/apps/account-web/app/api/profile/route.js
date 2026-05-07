@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
 const SUPABASE_CLERK_JWT_TEMPLATE = "supabase";
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 30;
+const MAX_PROFILE_BYTES = 250_000;
+const profileRateLimitStore = globalThis.__workwiseProfileRateLimit ?? new Map();
+
+if (!globalThis.__workwiseProfileRateLimit) {
+  globalThis.__workwiseProfileRateLimit = profileRateLimitStore;
+}
 
 class ApiError extends Error {
   constructor(message, status = 500, details = null) {
@@ -23,6 +31,47 @@ function buildHeaders({ apiKey, bearerToken, extra = {} }) {
     Authorization: `Bearer ${bearerToken}`,
     ...extra
   };
+}
+
+function getClientIp(request) {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    return forwardedFor.split(",")[0].trim();
+  }
+
+  return request.headers.get("x-real-ip")?.trim() || "unknown";
+}
+
+function enforceRateLimit({ request, userId, method }) {
+  const now = Date.now();
+  const key = `${method}:${userId}:${getClientIp(request)}`;
+  const entry = profileRateLimitStore.get(key);
+
+  if (!entry || now - entry.startedAt >= RATE_LIMIT_WINDOW_MS) {
+    profileRateLimitStore.set(key, { count: 1, startedAt: now });
+    return;
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    throw new ApiError("Too many profile requests. Please retry in a minute.", 429);
+  }
+
+  entry.count += 1;
+}
+
+function validateProfilePayload(profile, email) {
+  if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
+    throw new ApiError("Missing profile payload.", 400);
+  }
+
+  const serializedProfile = JSON.stringify(profile);
+  if (serializedProfile.length > MAX_PROFILE_BYTES) {
+    throw new ApiError("Profile payload is too large.", 413);
+  }
+
+  if (email != null && (typeof email !== "string" || email.length > 320)) {
+    throw new ApiError("Invalid email payload.", 400);
+  }
 }
 
 async function parseResponse(response) {
@@ -106,9 +155,10 @@ function buildErrorResponse(error, requestLabel, context = {}) {
   return NextResponse.json({ error: message }, { status });
 }
 
-export async function GET() {
+export async function GET(request) {
   try {
     const { apiKey, bearerToken, userId, supabaseUrl } = await getSupabaseContext();
+    enforceRateLimit({ request, userId, method: "GET" });
     const response = await fetch(
       `${supabaseUrl}/rest/v1/profiles?clerk_user_id=eq.${encodeURIComponent(userId)}&select=profile_json`,
       {
@@ -131,13 +181,11 @@ export async function GET() {
 export async function POST(request) {
   try {
     const { apiKey, bearerToken, userId, supabaseUrl } = await getSupabaseContext();
+    enforceRateLimit({ request, userId, method: "POST" });
     const body = await request.json();
     const profile = body?.profile ?? null;
     const email = body?.email ?? null;
-
-    if (!profile) {
-      return NextResponse.json({ error: "Missing profile payload." }, { status: 400 });
-    }
+    validateProfilePayload(profile, email);
 
     const response = await fetch(
       `${supabaseUrl}/rest/v1/profiles?on_conflict=clerk_user_id`,

@@ -33,6 +33,15 @@ function readAccountSyncState(key) {
   }
 }
 
+function readMirroredProfileForUser(clerkUserId) {
+  const state = readAccountSyncState(ACCOUNT_PROFILE_STATE_KEY);
+  if (!state?.profile || !clerkUserId) {
+    return null;
+  }
+
+  return state.clerkUserId === clerkUserId ? state.profile : null;
+}
+
 function getLatestFavoriteSavedAt(favoriteCompanies = []) {
   if (!Array.isArray(favoriteCompanies) || !favoriteCompanies.length) {
     return 0;
@@ -236,7 +245,7 @@ function AccountDashboard() {
         syncAuthToExtension(user);
 
         const remoteProfile = await loadRemoteProfile();
-        const mirroredProfile = readAccountSyncState(ACCOUNT_PROFILE_STATE_KEY)?.profile ?? null;
+        const mirroredProfile = readMirroredProfileForUser(user.id);
         const resolvedProfile = mergeMirroredProfile(remoteProfile, mirroredProfile);
 
         if (cancelled) {

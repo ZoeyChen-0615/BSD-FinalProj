@@ -616,7 +616,6 @@ function syncJobToStorage() {
 
     lastSignature = signature;
     window.__WORKWISE_LAST_JOB = job;
-    console.log("[WorkWise] Captured LinkedIn job", job);
     chrome.storage.local.set({ [DETECTED_JOB_KEY]: job });
   });
 }
