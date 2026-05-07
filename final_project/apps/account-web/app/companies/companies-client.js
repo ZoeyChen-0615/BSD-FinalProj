@@ -1,8 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 import { useMemo, useState } from "react";
+import TopNavTabs from "../components/top-nav-tabs";
+
+const COMMENT_PREVIEW_LENGTH = 220;
 
 function getInitials(name = "") {
   return name
@@ -13,9 +15,44 @@ function getInitials(name = "") {
     .join("") || "CO";
 }
 
+function truncateComment(text = "", limit = COMMENT_PREVIEW_LENGTH) {
+  const normalized = String(text).replace(/\s+/g, " ").trim();
+  if (normalized.length <= limit) {
+    return { text: normalized, truncated: false };
+  }
+
+  return {
+    text: `${normalized.slice(0, limit).trimEnd()}...`,
+    truncated: true
+  };
+}
+
+function CommentCard({ companyId, tone, item, index, expandedMap, setExpandedMap }) {
+  const key = `${companyId}:${tone}:${index}`;
+  const expanded = Boolean(expandedMap[key]);
+  const preview = truncateComment(item);
+  const label = expanded || !preview.truncated ? item : preview.text;
+
+  return (
+    <article className={`comment-card ${tone}`}>
+      <p className="comment-copy">{label}</p>
+      {preview.truncated ? (
+        <button
+          type="button"
+          className="comment-toggle"
+          onClick={() => setExpandedMap((current) => ({ ...current, [key]: !current[key] }))}
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      ) : null}
+    </article>
+  );
+}
+
 function LandingState() {
   return (
     <main className="landing-shell">
+      <TopNavTabs active="rankings" />
       <section className="landing-card">
         <p className="eyebrow">WorkWise Rankings</p>
         <h1>Browse the top-rated companies in the Glassdoor dataset.</h1>
@@ -37,15 +74,30 @@ function LandingState() {
 
 export default function CompaniesClient({ categories = [] }) {
   const { user } = useUser();
-  const firstCompanyId = categories.find((category) => category.items.length)?.items[0]?.id ?? "";
-  const [selectedCompanyId, setSelectedCompanyId] = useState(firstCompanyId);
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState(categories[0]?.key ?? "");
+  const [selectedCompanyId, setSelectedCompanyId] = useState(categories[0]?.items?.[0]?.id ?? "");
+  const [expandedMap, setExpandedMap] = useState({});
 
-  const companyMap = useMemo(
-    () => new Map(categories.flatMap((category) => category.items.map((company) => [company.id, company]))),
-    [categories]
+  const selectedCategory = useMemo(
+    () => categories.find((category) => category.key === selectedCategoryKey) ?? categories[0] ?? null,
+    [categories, selectedCategoryKey]
   );
 
-  const selectedCompany = companyMap.get(selectedCompanyId) ?? companyMap.values().next().value ?? null;
+  const selectedCompany = useMemo(
+    () => selectedCategory?.items.find((company) => company.id === selectedCompanyId) ?? selectedCategory?.items?.[0] ?? null,
+    [selectedCategory, selectedCompanyId]
+  );
+
+  function handleSelectCategory(category) {
+    setSelectedCategoryKey(category.key);
+    setSelectedCompanyId(category.items[0]?.id ?? "");
+    setExpandedMap({});
+  }
+
+  function handleSelectCompany(companyId) {
+    setSelectedCompanyId(companyId);
+    setExpandedMap({});
+  }
 
   return (
     <>
@@ -54,16 +106,14 @@ export default function CompaniesClient({ categories = [] }) {
       </SignedOut>
       <SignedIn>
         <main className="account-shell">
+          <TopNavTabs active="rankings" />
           <header className="account-hero">
             <div>
               <p className="eyebrow">WorkWise Rankings</p>
               <h1>Top 5 companies by rating category.</h1>
               <p className="hero-copy">
-                Explore the highest-ranked companies in the current Glassdoor dataset and open any card to inspect full rating details.
+                Switch between rating dimensions, review the top 5 company cards, and open one company at a time for a deeper detail view.
               </p>
-              <div className="hero-actions">
-                <Link className="secondary-button nav-link-button" href="/">Account page</Link>
-              </div>
             </div>
             <div className="hero-user">
               <div className="hero-user-meta">
@@ -76,83 +126,111 @@ export default function CompaniesClient({ categories = [] }) {
 
           <section className="surface-card rankings-card">
             <div className="section-head">
-              <h2>Top company cards</h2>
-              <span className="status-pill">Top 5 per metric</span>
+              <h2>Company rankings</h2>
+              <span className="status-pill">Top 5 only</span>
             </div>
-            <div className="ranking-sections">
+
+            <div className="ranking-tabs">
               {categories.map((category) => (
-                <div key={category.key} className="ranking-group">
-                  <p className="section-kicker">{category.label}</p>
-                  <div className="ranking-card-grid">
-                    {category.items.map((company, index) => (
-                      <button
-                        key={`${category.key}-${company.id}`}
-                        type="button"
-                        className={`ranking-card ${selectedCompany?.id === company.id ? "is-active" : ""}`}
-                        onClick={() => setSelectedCompanyId(company.id)}
-                      >
-                        <div className="favorite-logo">{getInitials(company.name)}</div>
-                        <div className="ranking-card-copy">
-                          <strong>{company.name}</strong>
-                          <span>#{index + 1} in {category.label}</span>
-                          <b>{company[category.key]?.toFixed?.(1) ?? "--"}</b>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <button
+                  key={category.key}
+                  type="button"
+                  className={`ranking-tab ${selectedCategory?.key === category.key ? "is-active" : ""}`}
+                  onClick={() => handleSelectCategory(category)}
+                >
+                  {category.label}
+                </button>
               ))}
             </div>
-          </section>
 
-          <section className="surface-card">
-            <div className="section-head">
-              <h2>{selectedCompany?.name ?? "Select a company"}</h2>
-              <span className="status-pill">Detail view</span>
-            </div>
-            {selectedCompany ? (
-              <>
-                <div className="detail-metrics">
-                  <div className="metric-card">
-                    <span>Total Rating</span>
-                    <strong>{selectedCompany.totalRating?.toFixed?.(1) ?? "--"}</strong>
-                  </div>
-                  <div className="metric-card">
-                    <span>Career Opps</span>
-                    <strong>{selectedCompany.careerOpportunities?.toFixed?.(1) ?? "--"}</strong>
-                  </div>
-                  <div className="metric-card">
-                    <span>Comp & Benefits</span>
-                    <strong>{selectedCompany.compensationAndBenefits?.toFixed?.(1) ?? "--"}</strong>
-                  </div>
-                  <div className="metric-card">
-                    <span>WLB</span>
-                    <strong>{selectedCompany.workLifeBalance?.toFixed?.(1) ?? "--"}</strong>
-                  </div>
+            {selectedCategory ? (
+              <div className="favorites-layout rankings-layout">
+                <div className="favorites-list">
+                  {selectedCategory.items.map((company, index) => (
+                    <button
+                      key={company.id}
+                      type="button"
+                      className={`favorite-item ${selectedCompany?.id === company.id ? "is-active" : ""}`}
+                      onClick={() => handleSelectCompany(company.id)}
+                    >
+                      <div className="favorite-logo">{getInitials(company.name)}</div>
+                      <div className="favorite-copy">
+                        <strong>{company.name}</strong>
+                        <span>#{index + 1} in {selectedCategory.label}</span>
+                      </div>
+                    </button>
+                  ))}
                 </div>
-                <div className="comments-grid">
-                  <div>
-                    <p className="section-kicker">Pros</p>
-                    <div className="comment-stack">
-                      {selectedCompany.allPros.map((item, index) => (
-                        <article key={`${selectedCompany.id}-pro-${index}`} className="comment-card positive">{item}</article>
-                      ))}
-                      {!selectedCompany.allPros.length && <div className="empty-pill">No pros found.</div>}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="section-kicker">Cons</p>
-                    <div className="comment-stack">
-                      {selectedCompany.allCons.map((item, index) => (
-                        <article key={`${selectedCompany.id}-con-${index}`} className="comment-card negative">{item}</article>
-                      ))}
-                      {!selectedCompany.allCons.length && <div className="empty-pill">No cons found.</div>}
-                    </div>
-                  </div>
+
+                <div className="favorite-detail">
+                  {selectedCompany ? (
+                    <>
+                      <div className="section-head">
+                        <h3>{selectedCompany.name}</h3>
+                        <span className="status-pill">Rank #{selectedCategory.items.findIndex((company) => company.id === selectedCompany.id) + 1}</span>
+                      </div>
+                      <div className="detail-metrics">
+                        <div className="metric-card">
+                          <span>Total Rating</span>
+                          <strong>{selectedCompany.totalRating?.toFixed?.(1) ?? "--"}</strong>
+                        </div>
+                        <div className="metric-card">
+                          <span>Career Opps</span>
+                          <strong>{selectedCompany.careerOpportunities?.toFixed?.(1) ?? "--"}</strong>
+                        </div>
+                        <div className="metric-card">
+                          <span>Comp & Benefits</span>
+                          <strong>{selectedCompany.compensationAndBenefits?.toFixed?.(1) ?? "--"}</strong>
+                        </div>
+                        <div className="metric-card">
+                          <span>WLB</span>
+                          <strong>{selectedCompany.workLifeBalance?.toFixed?.(1) ?? "--"}</strong>
+                        </div>
+                      </div>
+                      <div className="comments-grid">
+                        <div>
+                          <p className="section-kicker">Pros</p>
+                          <div className="comment-stack">
+                            {selectedCompany.allPros.map((item, index) => (
+                              <CommentCard
+                                key={`${selectedCompany.id}-pro-${index}`}
+                                companyId={selectedCompany.id}
+                                tone="positive"
+                                item={item}
+                                index={index}
+                                expandedMap={expandedMap}
+                                setExpandedMap={setExpandedMap}
+                              />
+                            ))}
+                            {!selectedCompany.allPros.length && <div className="empty-pill">No pros found.</div>}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="section-kicker">Cons</p>
+                          <div className="comment-stack">
+                            {selectedCompany.allCons.map((item, index) => (
+                              <CommentCard
+                                key={`${selectedCompany.id}-con-${index}`}
+                                companyId={selectedCompany.id}
+                                tone="negative"
+                                item={item}
+                                index={index}
+                                expandedMap={expandedMap}
+                                setExpandedMap={setExpandedMap}
+                              />
+                            ))}
+                            {!selectedCompany.allCons.length && <div className="empty-pill">No cons found.</div>}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="muted-copy">Select a company to inspect the full details.</p>
+                  )}
                 </div>
-              </>
+              </div>
             ) : (
-              <p className="muted-copy">No company data available.</p>
+              <p className="muted-copy">No ranking data available.</p>
             )}
           </section>
         </main>

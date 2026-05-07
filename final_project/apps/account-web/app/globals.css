@@ -45,6 +45,34 @@ a {
   padding: 28px 20px 40px;
 }
 
+.top-nav-tabs {
+  display: inline-flex;
+  gap: 8px;
+  padding: 8px;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 252, 247, 0.82);
+  box-shadow: var(--shadow);
+}
+
+.top-nav-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 110px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.top-nav-tab.is-active {
+  background: var(--brand);
+  color: #fff;
+}
+
 .auth-shell {
   display: flex;
   justify-content: center;
@@ -139,8 +167,7 @@ h3 {
 .favorites-layout,
 .dashboard-grid,
 .hero-actions,
-.ranking-card-grid,
-.ranking-sections {
+.ranking-tabs {
   display: grid;
 }
 
@@ -373,6 +400,10 @@ h3 {
   line-height: 1.55;
 }
 
+.comment-copy {
+  margin-bottom: 0;
+}
+
 .comment-card.positive {
   background: rgba(36, 107, 59, 0.08);
   border-color: rgba(36, 107, 59, 0.18);
@@ -385,53 +416,52 @@ h3 {
   color: var(--danger);
 }
 
+.comment-toggle {
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: currentColor;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .rankings-card {
   margin-bottom: 18px;
 }
 
-.ranking-sections {
-  gap: 18px;
+.rankings-layout {
+  margin-top: 18px;
 }
 
-.ranking-group {
-  display: grid;
+.ranking-tabs {
+  grid-auto-flow: column;
+  justify-content: start;
   gap: 10px;
+  overflow-x: auto;
 }
 
-.ranking-card-grid {
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 12px;
-}
-
-.ranking-card {
-  display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  border: 1px solid var(--line);
-  background: #fff;
-  text-align: left;
-  cursor: pointer;
-}
-
-.ranking-card.is-active {
-  box-shadow: inset 3px 0 0 #0a66c2;
-  border-color: rgba(10, 102, 194, 0.18);
-}
-
-.ranking-card-copy {
-  display: grid;
-  gap: 4px;
-}
-
-.ranking-card-copy span {
+.ranking-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(30, 29, 26, 0.08);
   color: var(--muted);
-  font-size: 13px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.ranking-card-copy b {
-  font-size: 22px;
+.ranking-tab.is-active {
+  background: var(--brand-soft);
+  color: var(--brand);
 }
 
 @media (max-width: 960px) {
