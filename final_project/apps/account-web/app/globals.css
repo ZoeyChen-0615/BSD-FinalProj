@@ -137,11 +137,21 @@ h3 {
 .detail-metrics,
 .comments-grid,
 .favorites-layout,
-.dashboard-grid {
+.dashboard-grid,
+.hero-actions,
+.ranking-card-grid,
+.ranking-sections {
   display: grid;
 }
 
 .landing-actions {
+  grid-auto-flow: column;
+  justify-content: start;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.hero-actions {
   grid-auto-flow: column;
   justify-content: start;
   gap: 12px;
@@ -174,6 +184,10 @@ h3 {
 .secondary-button {
   background: rgba(30, 29, 26, 0.08);
   color: var(--ink);
+}
+
+.nav-link-button {
+  text-decoration: none;
 }
 
 .dashboard-grid {
@@ -369,6 +383,55 @@ h3 {
   background: var(--danger-soft);
   border-color: rgba(143, 45, 36, 0.18);
   color: var(--danger);
+}
+
+.rankings-card {
+  margin-bottom: 18px;
+}
+
+.ranking-sections {
+  gap: 18px;
+}
+
+.ranking-group {
+  display: grid;
+  gap: 10px;
+}
+
+.ranking-card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.ranking-card {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ranking-card.is-active {
+  box-shadow: inset 3px 0 0 #0a66c2;
+  border-color: rgba(10, 102, 194, 0.18);
+}
+
+.ranking-card-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.ranking-card-copy span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ranking-card-copy b {
+  font-size: 22px;
 }
 
 @media (max-width: 960px) {

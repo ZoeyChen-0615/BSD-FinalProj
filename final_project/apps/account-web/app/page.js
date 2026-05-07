@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 import { useEffect, useMemo, useState } from "react";
 import { normalizeProfile } from "../lib/profile";
@@ -330,6 +331,9 @@ function AccountDashboard() {
           <p className="hero-copy">
             Upload the latest resume once, keep your session across job posts, and review the companies you saved from the extension.
           </p>
+          <div className="hero-actions">
+            <Link className="secondary-button nav-link-button" href="/companies">Browse top-rated companies</Link>
+          </div>
         </div>
         <div className="hero-user">
           <div className="hero-user-meta">
