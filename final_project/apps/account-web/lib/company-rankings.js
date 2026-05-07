@@ -106,6 +106,7 @@ function toCompanyRecord(aggregate) {
   return {
     id: aggregate.id,
     name: aggregate.name,
+    reviewCount: aggregate.rating.count,
     totalRating: averageMetric(aggregate.rating),
     careerOpportunities: averageMetric(aggregate.careerOpportunities),
     compensationAndBenefits: averageMetric(aggregate.compensationAndBenefits),
@@ -127,12 +128,6 @@ export async function getCompanyRankings() {
   const companies = [...companyIndex.values()].map(toCompanyRecord);
 
   return {
-    companies,
-    categories: [
-      { key: "totalRating", label: "Top Total Rating", items: topByMetric(companies, "totalRating") },
-      { key: "careerOpportunities", label: "Top Career Opportunities", items: topByMetric(companies, "careerOpportunities") },
-      { key: "compensationAndBenefits", label: "Top Compensation & Benefits", items: topByMetric(companies, "compensationAndBenefits") },
-      { key: "workLifeBalance", label: "Top Work-Life Balance", items: topByMetric(companies, "workLifeBalance") }
-    ]
+    companies
   };
 }

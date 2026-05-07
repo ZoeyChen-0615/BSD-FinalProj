@@ -167,7 +167,8 @@ h3 {
 .favorites-layout,
 .dashboard-grid,
 .hero-actions,
-.ranking-tabs {
+.ranking-tabs,
+.ranking-controls {
   display: grid;
 }
 
@@ -437,6 +438,28 @@ h3 {
   margin-top: 18px;
 }
 
+.ranking-controls {
+  grid-template-columns: minmax(220px, 320px) auto;
+  align-items: end;
+  gap: 12px;
+  margin: 16px 0 18px;
+}
+
+.ranking-filter {
+  display: grid;
+  gap: 8px;
+}
+
+.ranking-filter input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink);
+  font: inherit;
+}
+
 .ranking-tabs {
   grid-auto-flow: column;
   justify-content: start;
@@ -468,7 +491,8 @@ h3 {
   .account-hero,
   .favorites-layout,
   .comments-grid,
-  .detail-metrics {
+  .detail-metrics,
+  .ranking-controls {
     grid-template-columns: minmax(0, 1fr);
   }
 

@@ -7,6 +7,6 @@ export const metadata = {
 };
 
 export default async function CompaniesPage() {
-  const { categories } = await getCompanyRankings();
-  return <CompaniesClient categories={categories} />;
+  const { companies } = await getCompanyRankings();
+  return <CompaniesClient companies={companies} />;
 }

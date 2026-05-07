@@ -5,6 +5,13 @@ import { useMemo, useState } from "react";
 import TopNavTabs from "../components/top-nav-tabs";
 
 const COMMENT_PREVIEW_LENGTH = 220;
+const DEFAULT_MIN_REVIEWS = 25;
+const RANKING_CATEGORIES = [
+  { key: "totalRating", label: "Top Total Rating" },
+  { key: "careerOpportunities", label: "Top Career Opportunities" },
+  { key: "compensationAndBenefits", label: "Top Compensation & Benefits" },
+  { key: "workLifeBalance", label: "Top Work-Life Balance" }
+];
 
 function getInitials(name = "") {
   return name
@@ -72,11 +79,35 @@ function LandingState() {
   );
 }
 
-export default function CompaniesClient({ categories = [] }) {
+function buildCategories(companies, minReviews) {
+  const threshold = Number.isFinite(minReviews) ? minReviews : 0;
+  const eligibleCompanies = companies.filter((company) => (company.reviewCount ?? 0) >= threshold);
+
+  return RANKING_CATEGORIES.map((category) => ({
+    ...category,
+    items: [...eligibleCompanies]
+      .filter((company) => Number.isFinite(company[category.key]))
+      .sort((left, right) => right[category.key] - left[category.key] || left.name.localeCompare(right.name))
+      .slice(0, 5)
+  }));
+}
+
+export default function CompaniesClient({ companies = [] }) {
   const { user } = useUser();
-  const [selectedCategoryKey, setSelectedCategoryKey] = useState(categories[0]?.key ?? "");
-  const [selectedCompanyId, setSelectedCompanyId] = useState(categories[0]?.items?.[0]?.id ?? "");
+  const [minReviewsInput, setMinReviewsInput] = useState(String(DEFAULT_MIN_REVIEWS));
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState(RANKING_CATEGORIES[0]?.key ?? "");
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [expandedMap, setExpandedMap] = useState({});
+
+  const minReviews = useMemo(() => {
+    const parsed = Number.parseInt(minReviewsInput, 10);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  }, [minReviewsInput]);
+
+  const categories = useMemo(
+    () => buildCategories(companies, minReviews),
+    [companies, minReviews]
+  );
 
   const selectedCategory = useMemo(
     () => categories.find((category) => category.key === selectedCategoryKey) ?? categories[0] ?? null,
@@ -130,6 +161,20 @@ export default function CompaniesClient({ categories = [] }) {
               <span className="status-pill">Top 5 only</span>
             </div>
 
+            <div className="ranking-controls">
+              <label className="ranking-filter">
+                <span className="section-kicker">Minimum rating count</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={minReviewsInput}
+                  onChange={(event) => setMinReviewsInput(event.target.value)}
+                />
+              </label>
+              <span className="status-pill">Showing companies with at least {minReviews} reviews</span>
+            </div>
+
             <div className="ranking-tabs">
               {categories.map((category) => (
                 <button
@@ -157,6 +202,7 @@ export default function CompaniesClient({ categories = [] }) {
                       <div className="favorite-copy">
                         <strong>{company.name}</strong>
                         <span>#{index + 1} in {selectedCategory.label}</span>
+                        <span>{company.reviewCount} ratings</span>
                       </div>
                     </button>
                   ))}
@@ -167,7 +213,9 @@ export default function CompaniesClient({ categories = [] }) {
                     <>
                       <div className="section-head">
                         <h3>{selectedCompany.name}</h3>
-                        <span className="status-pill">Rank #{selectedCategory.items.findIndex((company) => company.id === selectedCompany.id) + 1}</span>
+                        <span className="status-pill">
+                          Rank #{selectedCategory.items.findIndex((company) => company.id === selectedCompany.id) + 1} · {selectedCompany.reviewCount} ratings
+                        </span>
                       </div>
                       <div className="detail-metrics">
                         <div className="metric-card">
@@ -230,7 +278,7 @@ export default function CompaniesClient({ categories = [] }) {
                 </div>
               </div>
             ) : (
-              <p className="muted-copy">No ranking data available.</p>
+              <p className="muted-copy">No ranking data available for this minimum rating count.</p>
             )}
           </section>
         </main>
