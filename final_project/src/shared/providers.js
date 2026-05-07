@@ -474,6 +474,13 @@ function normalizeCompanyLookup(value) {
     .trim();
 }
 
+function getCompanyLookupTokens(value) {
+  return normalizeCompanyLookup(value)
+    .split(" ")
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
 function parseCsvLine(line) {
   const cells = [];
   let current = "";
@@ -618,16 +625,33 @@ function pickBestCompanyAggregate(companyIndex, companyName) {
     return companyIndex.get(normalizedTarget);
   }
 
+  const targetTokens = getCompanyLookupTokens(companyName);
+  if (!targetTokens.length) {
+    return null;
+  }
+
   let bestMatch = null;
 
   for (const [normalizedName, aggregate] of companyIndex.entries()) {
+    const candidateTokens = normalizedName.split(" ").filter(Boolean);
+    if (!candidateTokens.length) {
+      continue;
+    }
+
+    const candidateIsSubset = candidateTokens.every((token) => targetTokens.includes(token));
+    const targetIsSubset = targetTokens.every((token) => candidateTokens.includes(token));
+
+    if (!candidateIsSubset && !targetIsSubset) {
+      continue;
+    }
+
+    const score = candidateTokens.filter((token) => targetTokens.includes(token)).length;
     if (
-      normalizedName.includes(normalizedTarget) ||
-      normalizedTarget.includes(normalizedName)
+      !bestMatch ||
+      score > bestMatch.score ||
+      (score === bestMatch.score && normalizedName.length > bestMatch.normalizedName.length)
     ) {
-      if (!bestMatch || normalizedName.length > bestMatch.normalizedName.length) {
-        bestMatch = { normalizedName, aggregate };
-      }
+      bestMatch = { normalizedName, aggregate, score };
     }
   }
 
