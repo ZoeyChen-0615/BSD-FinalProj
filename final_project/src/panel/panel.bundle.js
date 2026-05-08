@@ -122560,7 +122560,7 @@ var require_panel = __commonJS({
       const jobId = getCurrentJobId();
       return {
         id: jobId || `${company}`.toLowerCase().replace(/\s+/g, "-"),
-        title: "",
+        title,
         company: isNoise(company) ? "" : company,
         location,
         description,
@@ -123587,7 +123587,7 @@ var require_panel = __commonJS({
       return {
         ...fallbackJob,
         ...primaryJob,
-        title: "",
+        title: primaryJob.title || fallbackJob.title || "",
         company: fallbackJob.company || primaryJob.company || "",
         location: fallbackJob.location || primaryJob.location || "",
         description: primaryJob.description || fallbackJob.description || ""

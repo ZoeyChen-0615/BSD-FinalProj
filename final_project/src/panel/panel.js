@@ -321,7 +321,7 @@ function stripJobDescriptionLabel(text) {
 
   return {
     id: jobId || `${company}`.toLowerCase().replace(/\s+/g, "-"),
-    title: "",
+    title,
     company: isNoise(company) ? "" : company,
     location,
     description,
@@ -1845,7 +1845,7 @@ function mergeJobData(primaryJob = {}, fallbackJob = {}) {
   return {
     ...fallbackJob,
     ...primaryJob,
-    title: "",
+    title: primaryJob.title || fallbackJob.title || "",
     company: fallbackJob.company || primaryJob.company || "",
     location: fallbackJob.location || primaryJob.location || "",
     description: primaryJob.description || fallbackJob.description || ""

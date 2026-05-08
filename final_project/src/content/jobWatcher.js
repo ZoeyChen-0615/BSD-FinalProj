@@ -567,7 +567,7 @@ function extractJobFromPage() {
 
   return {
     id: jobId || `${jobFields.company}`.toLowerCase().replace(/\s+/g, "-"),
-    title: "",
+    title: jobFields.title || "",
     company: isNoise(jobFields.company) ? "" : normalizeCompany(jobFields.company),
     location: jobFields.location,
     description,
