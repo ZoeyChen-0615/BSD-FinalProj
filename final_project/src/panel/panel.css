@@ -308,6 +308,21 @@ h3 {
   margin-bottom: 12px;
 }
 
+.cover-letter-stack {
+  display: grid;
+  margin-top: 12px;
+}
+
+.cover-letter-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.cover-letter-actions .button {
+  min-width: 0;
+  padding-inline: 10px;
+  text-align: center;
+}
+
 body.popup-view .auth-stack {
   display: none;
 }

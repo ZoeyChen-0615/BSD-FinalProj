@@ -4,6 +4,7 @@ import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } 
 import { useEffect, useMemo, useState } from "react";
 import TopNavTabs from "./components/top-nav-tabs";
 import { normalizeProfile } from "../lib/profile";
+import { readCoverLetterTemplate } from "../lib/cover-letter";
 import { readResumeText } from "../lib/resume";
 
 const ACCOUNT_AUTH_STATE_KEY = "workwise.accountAuthState";
@@ -53,6 +54,13 @@ function getLatestFavoriteSavedAt(favoriteCompanies = []) {
   }, 0);
 }
 
+function getProfileSyncMs(profile) {
+  const timestamps = [profile?.resume?.uploadedAt, profile?.coverLetterTemplate?.uploadedAt]
+    .map((value) => (value ? Date.parse(value) : Number.NaN))
+    .filter((value) => Number.isFinite(value));
+  return timestamps.length ? Math.max(...timestamps) : 0;
+}
+
 function mergeMirroredProfile(remoteProfile, mirroredProfile) {
   const normalizedRemote = normalizeProfile(remoteProfile);
   const normalizedMirrored = normalizeProfile(mirroredProfile);
@@ -67,15 +75,19 @@ function mergeMirroredProfile(remoteProfile, mirroredProfile) {
 
   const remoteFavoriteMs = getLatestFavoriteSavedAt(normalizedRemote.favoriteCompanies);
   const mirroredFavoriteMs = getLatestFavoriteSavedAt(normalizedMirrored.favoriteCompanies);
+  const baseProfile =
+    getProfileSyncMs(normalizedMirrored) > getProfileSyncMs(normalizedRemote)
+      ? normalizedMirrored
+      : normalizedRemote;
 
   if (mirroredFavoriteMs > remoteFavoriteMs) {
     return normalizeProfile({
-      ...normalizedRemote,
+      ...baseProfile,
       favoriteCompanies: normalizedMirrored.favoriteCompanies
     });
   }
 
-  return normalizedRemote;
+  return baseProfile;
 }
 
 function syncAuthToExtension(user) {
@@ -222,6 +234,7 @@ function AccountDashboard() {
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [status, setStatus] = useState("Loading your account...");
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingTemplate, setIsUploadingTemplate] = useState(false);
 
   const favorites = useMemo(() => profile?.favoriteCompanies ?? [], [profile]);
   const selectedCompany = useMemo(
@@ -332,6 +345,32 @@ function AccountDashboard() {
     }
   }
 
+  async function handleCoverLetterTemplateUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setIsUploadingTemplate(true);
+    setStatus(`Reading ${file.name}...`);
+
+    try {
+      const template = await readCoverLetterTemplate(file);
+      const nextProfile = normalizeProfile({
+        ...(profile ?? {}),
+        favoriteCompanies: favorites,
+        coverLetterTemplate: template
+      });
+
+      await persistProfile(nextProfile, `${file.name} cover letter template uploaded.`);
+    } catch (error) {
+      setStatus(error?.message || "Cover letter template upload failed.");
+    } finally {
+      setIsUploadingTemplate(false);
+      event.target.value = "";
+    }
+  }
+
   return (
     <main className="account-shell">
       <TopNavTabs active="account" />
@@ -369,6 +408,19 @@ function AccountDashboard() {
               accept=".txt,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={handleResumeUpload}
               disabled={isUploading}
+            />
+          </label>
+          <p className="muted-copy">
+            Cover letter template: <strong>{profile?.coverLetterTemplate?.fileName ?? "none"}</strong>
+          </p>
+          <p className="muted-copy">Template uploaded at: {formatDate(profile?.coverLetterTemplate?.uploadedAt)}</p>
+          <label className="upload-button">
+            <span>{isUploadingTemplate ? "Uploading..." : "Upload Cover Letter Template (.docx)"}</span>
+            <input
+              type="file"
+              accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={handleCoverLetterTemplateUpload}
+              disabled={isUploadingTemplate}
             />
           </label>
           <div className="keyword-block">

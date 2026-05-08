@@ -92,6 +92,28 @@
 
         <section class="card account-view-hidden">
           <div class="section-head">
+            <h2>Cover Letter</h2>
+            <button id="openAccountTemplateButton" class="button button-secondary" type="button">Upload on account page</button>
+          </div>
+          <div id="coverLetterTemplateMeta" class="profile-meta">
+            <p id="coverLetterTemplateName" class="hint">Template: none uploaded</p>
+            <p id="coverLetterTemplateUploadedAt" class="hint">Template uploaded at: --</p>
+          </div>
+          <p class="hint">Use a DOCX template with the placeholders <strong>[company]</strong> and <strong>[title]</strong>.</p>
+          <div class="auth-stack cover-letter-stack">
+            <input id="coverLetterCompanyInput" class="text-input" type="text" placeholder="Company name" />
+            <input id="coverLetterTitleInput" class="text-input" type="text" placeholder="Job title" />
+            <div class="button-row cover-letter-actions">
+              <button id="saveCoverLetterButton" class="button button-secondary" type="button">Save</button>
+              <button id="downloadCoverLetterDocxButton" class="button" type="button">Download DOCX</button>
+              <button id="downloadCoverLetterPdfButton" class="button button-secondary" type="button">Download PDF</button>
+            </div>
+          </div>
+          <p id="coverLetterStatus" class="hint">Upload a template on the account page to start.</p>
+        </section>
+
+        <section class="card account-view-hidden">
+          <div class="section-head">
             <h2>Skills Match</h2>
             <span id="matchScore" class="score-pill">--</span>
           </div>

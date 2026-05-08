@@ -315,12 +315,34 @@ function buildResumeSummary(fileText) {
     .join(" ");
 }
 
+function normalizeCoverLetterTemplate(template) {
+  if (!template?.documentBase64) {
+    return null;
+  }
+
+  return {
+    fileName: template.fileName ?? "cover-letter-template.docx",
+    uploadedAt: template.uploadedAt ?? new Date().toISOString(),
+    mimeType:
+      template.mimeType ??
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    documentBase64: template.documentBase64,
+    placeholders: Array.isArray(template.placeholders) ? template.placeholders : ["[company]", "[title]"]
+  };
+}
+
 export function normalizeProfile(profile) {
   if (!profile) {
     return null;
   }
 
   const rawText = profile.resume?.rawText || profile.parsedResume?.preview || "";
+  const hasResumeData = Boolean(
+    rawText ||
+    profile.resume?.fileName ||
+    profile.resume?.uploadedAt ||
+    profile.parsedResume
+  );
   const normalizedSkills = unique(
     rawText
       ? extractSkillsFromText(rawText)
@@ -329,13 +351,14 @@ export function normalizeProfile(profile) {
 
   return {
     ...profile,
-    resume: {
+    coverLetterTemplate: normalizeCoverLetterTemplate(profile.coverLetterTemplate),
+    resume: hasResumeData ? {
       ...profile.resume,
       fileName: profile.resume?.fileName ?? "resume.txt",
       uploadedAt: profile.resume?.uploadedAt ?? new Date().toISOString(),
       rawText
-    },
-    parsedResume: {
+    } : null,
+    parsedResume: hasResumeData ? {
       ...profile.parsedResume,
       skills: normalizedSkills,
       preview: rawText ? buildResumePreview(rawText) : (profile.parsedResume?.preview ?? ""),
@@ -346,7 +369,7 @@ export function normalizeProfile(profile) {
       education:
         profile.parsedResume?.education ??
         (/master|ms|phd/i.test(rawText) ? "Advanced degree mentioned" : "Education not detected")
-    }
+    } : null
   };
 }
 

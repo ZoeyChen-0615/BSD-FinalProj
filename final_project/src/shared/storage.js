@@ -4,6 +4,7 @@ const STORAGE_KEYS = {
   detectedJob: "workwise.detectedJob",
   authSnapshot: "workwise.authSnapshot",
   favoriteCompanies: "workwise.favoriteCompanies",
+  coverLetterDrafts: "workwise.coverLetterDrafts",
   userProfiles: "workwise.userProfiles",
   userFavoriteCompanies: "workwise.userFavoriteCompanies"
 };
@@ -35,8 +36,10 @@ function saveLocalMirror(key, value) {
 }
 
 function getUploadedAtMs(value) {
-  const timestamp = value?.resume?.uploadedAt ? Date.parse(value.resume.uploadedAt) : Number.NaN;
-  return Number.isFinite(timestamp) ? timestamp : 0;
+  const timestamps = [value?.resume?.uploadedAt, value?.coverLetterTemplate?.uploadedAt]
+    .map((entry) => (entry ? Date.parse(entry) : Number.NaN))
+    .filter((entry) => Number.isFinite(entry));
+  return timestamps.length ? Math.max(...timestamps) : 0;
 }
 
 function getFavoriteSavedAtMs(value) {
@@ -163,6 +166,15 @@ export async function loadFavoriteCompanies() {
 
 export async function saveFavoriteCompanies(favoriteCompanies) {
   await setLocal({ [STORAGE_KEYS.favoriteCompanies]: favoriteCompanies });
+}
+
+export async function loadCoverLetterDrafts() {
+  const result = await getLocal([STORAGE_KEYS.coverLetterDrafts]);
+  return result[STORAGE_KEYS.coverLetterDrafts] ?? {};
+}
+
+export async function saveCoverLetterDrafts(coverLetterDrafts) {
+  await setLocal({ [STORAGE_KEYS.coverLetterDrafts]: coverLetterDrafts });
 }
 
 export async function loadUserProfile(userKey) {

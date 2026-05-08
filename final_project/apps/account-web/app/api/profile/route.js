@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 const SUPABASE_CLERK_JWT_TEMPLATE = "supabase";
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 30;
-const MAX_PROFILE_BYTES = 250_000;
+const MAX_PROFILE_BYTES = 1_500_000;
 const profileRateLimitStore = globalThis.__workwiseProfileRateLimit ?? new Map();
 
 if (!globalThis.__workwiseProfileRateLimit) {

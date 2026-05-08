@@ -2,6 +2,7 @@ import { ANALYSIS_SCHEMA_VERSION, normalizeProfile, providerRegistry } from "../
 import {
   STORAGE_KEYS,
   loadAuthSnapshot,
+  loadCoverLetterDrafts,
   loadCurrentAnalysis,
   loadDetectedJob,
   loadFavoriteCompanies,
@@ -10,11 +11,20 @@ import {
   loadUserProfile,
   saveCurrentAnalysis,
   saveAuthSnapshot,
+  saveCoverLetterDrafts,
   saveFavoriteCompanies,
   saveUserFavoriteCompanies,
   saveUserProfile,
   saveProfile
 } from "../shared/storage.js";
+import {
+  buildCoverLetterDraftKey,
+  downloadCoverLetterDocx,
+  downloadCoverLetterPdf,
+  getCoverLetterDefaults,
+  getCoverLetterTemplate,
+  sanitizeCoverLetterField
+} from "../shared/coverLetter.js";
 import {
   getClerkAuthState,
   getClerkEmail,
@@ -365,6 +375,15 @@ const ui = {
   jobTitleLine: document.getElementById("jobTitleLine"),
   jobDescriptionHint: document.getElementById("jobDescriptionHint"),
   jobPreview: document.getElementById("jobPreview"),
+  openAccountTemplateButton: document.getElementById("openAccountTemplateButton"),
+  coverLetterTemplateName: document.getElementById("coverLetterTemplateName"),
+  coverLetterTemplateUploadedAt: document.getElementById("coverLetterTemplateUploadedAt"),
+  coverLetterCompanyInput: document.getElementById("coverLetterCompanyInput"),
+  coverLetterTitleInput: document.getElementById("coverLetterTitleInput"),
+  saveCoverLetterButton: document.getElementById("saveCoverLetterButton"),
+  downloadCoverLetterDocxButton: document.getElementById("downloadCoverLetterDocxButton"),
+  downloadCoverLetterPdfButton: document.getElementById("downloadCoverLetterPdfButton"),
+  coverLetterStatus: document.getElementById("coverLetterStatus"),
   matchScore: document.getElementById("matchScore"),
   requirementsList: document.getElementById("requirementsList"),
   skillGapList: document.getElementById("skillGapList"),
@@ -406,9 +425,12 @@ const runtimeState = {
   currentView: new URLSearchParams(window.location.search).get("view") === "account" ? "account" : "popup",
   profileRefreshTimer: null,
   isUploadingResume: false,
+  currentJob: null,
   currentCompany: null,
   favoriteCompanies: [],
-  selectedFavoriteCompany: null
+  selectedFavoriteCompany: null,
+  coverLetterDrafts: {},
+  currentCoverLetterDraftKey: ""
 };
 
 function getAuthSnapshotMs(snapshot) {
@@ -1486,9 +1508,10 @@ async function persistNormalizedProfile(profile, { syncRemote = false } = {}) {
 }
 
 function getProfileUploadedAtMs(profile) {
-  const value = profile?.resume?.uploadedAt;
-  const timestamp = value ? Date.parse(value) : Number.NaN;
-  return Number.isFinite(timestamp) ? timestamp : 0;
+  const timestamps = [profile?.resume?.uploadedAt, profile?.coverLetterTemplate?.uploadedAt]
+    .map((value) => (value ? Date.parse(value) : Number.NaN))
+    .filter((value) => Number.isFinite(value));
+  return timestamps.length ? Math.max(...timestamps) : 0;
 }
 
 function pickLatestProfile(localProfile, remoteProfile) {
@@ -1533,6 +1556,7 @@ async function refreshResolvedProfile({ reanalyze = true } = {}) {
   if (!isSignedIn()) {
     renderProfile(null);
     renderAnalysis(null);
+    renderCoverLetterComposer(null, null);
     return null;
   }
 
@@ -1554,6 +1578,7 @@ async function refreshResolvedProfile({ reanalyze = true } = {}) {
   }
 
   renderProfile(resolvedProfile);
+  renderCoverLetterComposer(resolvedProfile, runtimeState.currentJob);
 
   if (reanalyze && resolvedProfile?.parsedResume) {
     const currentAnalysis = await loadCurrentAnalysis();
@@ -1719,8 +1744,80 @@ function renderProfile(profile) {
   renderList(ui.resumeSkills, keywords, (skill) => createTag(skill));
 }
 
+function setCoverLetterFormValues({ company = "", title = "" }) {
+  ui.coverLetterCompanyInput.value = company;
+  ui.coverLetterTitleInput.value = title;
+}
+
+function getCoverLetterFormValues() {
+  return {
+    company: sanitizeCoverLetterField(ui.coverLetterCompanyInput.value),
+    title: sanitizeCoverLetterField(ui.coverLetterTitleInput.value)
+  };
+}
+
+function updateCoverLetterButtons({ hasTemplate, hasJob, hasValues }) {
+  ui.saveCoverLetterButton.disabled = !isSignedIn() || !hasJob || !hasValues;
+  ui.downloadCoverLetterDocxButton.disabled = !isSignedIn() || !hasTemplate || !hasJob || !hasValues;
+  ui.downloadCoverLetterPdfButton.disabled = !isSignedIn() || !hasTemplate || !hasJob || !hasValues;
+}
+
+function renderCoverLetterComposer(profile, job = runtimeState.currentJob) {
+  const template = getCoverLetterTemplate(profile);
+  const resolvedJob = job ?? runtimeState.currentJob ?? null;
+  const draftKey = buildCoverLetterDraftKey(resolvedJob);
+  const savedDraft = draftKey ? runtimeState.coverLetterDrafts[draftKey] ?? null : null;
+  const defaults = getCoverLetterDefaults(resolvedJob);
+  const nextValues = {
+    company: savedDraft?.company || defaults.company,
+    title: savedDraft?.title || defaults.title
+  };
+
+  if (runtimeState.currentCoverLetterDraftKey !== draftKey) {
+    runtimeState.currentCoverLetterDraftKey = draftKey;
+    setCoverLetterFormValues(nextValues);
+  } else if (!ui.coverLetterCompanyInput.value && nextValues.company) {
+    ui.coverLetterCompanyInput.value = nextValues.company;
+  }
+
+  if (runtimeState.currentCoverLetterDraftKey === draftKey && !ui.coverLetterTitleInput.value && nextValues.title) {
+    ui.coverLetterTitleInput.value = nextValues.title;
+  }
+
+  ui.coverLetterTemplateName.textContent = `Template: ${template?.fileName ?? "none uploaded"}`;
+  ui.coverLetterTemplateUploadedAt.textContent = `Template uploaded at: ${
+    template?.uploadedAt ? new Date(template.uploadedAt).toLocaleString() : "--"
+  }`;
+
+  if (!isSignedIn()) {
+    setCoverLetterFormValues({ company: "", title: "" });
+    ui.coverLetterStatus.textContent = "Log in to generate a role-specific cover letter.";
+    updateCoverLetterButtons({ hasTemplate: false, hasJob: false, hasValues: false });
+    return;
+  }
+
+  if (!template) {
+    ui.coverLetterStatus.textContent = "Upload a DOCX cover letter template on the account page first.";
+    updateCoverLetterButtons({ hasTemplate: false, hasJob: Boolean(resolvedJob), hasValues: false });
+    return;
+  }
+
+  if (!resolvedJob) {
+    ui.coverLetterStatus.textContent = "Refresh a LinkedIn job first to fill company and job title.";
+    updateCoverLetterButtons({ hasTemplate: true, hasJob: false, hasValues: false });
+    return;
+  }
+
+  const hasValues = Boolean(getCoverLetterFormValues().company && getCoverLetterFormValues().title);
+  ui.coverLetterStatus.textContent = savedDraft
+    ? "Saved replacements are ready. Download DOCX or PDF when you need this version."
+    : "Edit company/title if needed, then save before downloading.";
+  updateCoverLetterButtons({ hasTemplate: true, hasJob: true, hasValues });
+}
+
 function renderAnalysis(analysis) {
   if (!isSignedIn()) {
+    runtimeState.currentJob = null;
     runtimeState.currentCompany = null;
     ui.jobMeta.textContent = "Log in to unlock job fit analysis.";
     ui.jobTitleLine.textContent = "";
@@ -1771,6 +1868,7 @@ function renderAnalysis(analysis) {
   }
 
   const { job, match, languageSignals, company } = analysis;
+  runtimeState.currentJob = job;
   runtimeState.currentCompany = company?.name ? company : { ...company, name: job.company || company?.name || "" };
   const displayCompany = normalizeDisplayCompany(job.company);
 
@@ -1816,6 +1914,7 @@ function renderAnalysis(analysis) {
   renderList(ui.companyPros, company.pros?.slice(0, 3) ?? [], (item) => createCommentCard(item, "positive"));
   renderList(ui.companyCons, company.cons?.slice(0, 3) ?? [], (item) => createCommentCard(item, "negative"));
   updateFavoriteButton();
+  loadProfile().then((profile) => renderCoverLetterComposer(profile, job)).catch(() => {});
 }
 
 function getProfileAnalysisKey(profile) {
@@ -1987,6 +2086,79 @@ async function handleResumeUpload(event) {
   } finally {
     runtimeState.isUploadingResume = false;
     event.target.value = "";
+  }
+}
+
+async function handleSaveCoverLetterDetails() {
+  if (!isSignedIn()) {
+    ui.coverLetterStatus.textContent = "Log in before saving cover letter details.";
+    return;
+  }
+
+  const job = runtimeState.currentJob ?? await loadDetectedJob();
+  const draftKey = buildCoverLetterDraftKey(job);
+  if (!draftKey) {
+    ui.coverLetterStatus.textContent = "Refresh a LinkedIn job before saving cover letter details.";
+    return;
+  }
+
+  const { company, title } = getCoverLetterFormValues();
+  if (!company || !title) {
+    ui.coverLetterStatus.textContent = "Company and job title are both required.";
+    updateCoverLetterButtons({ hasTemplate: Boolean(getCoverLetterTemplate(await loadProfile())), hasJob: true, hasValues: false });
+    return;
+  }
+
+  runtimeState.currentJob = job;
+  runtimeState.coverLetterDrafts = {
+    ...runtimeState.coverLetterDrafts,
+    [draftKey]: {
+      company,
+      title,
+      savedAt: new Date().toISOString()
+    }
+  };
+
+  await saveCoverLetterDrafts(runtimeState.coverLetterDrafts);
+  ui.coverLetterStatus.textContent = "Saved cover letter replacements for this job.";
+  renderCoverLetterComposer(await loadProfile(), job);
+}
+
+async function handleDownloadCoverLetter(format) {
+  if (!isSignedIn()) {
+    ui.coverLetterStatus.textContent = "Log in before downloading a cover letter.";
+    return;
+  }
+
+  const profile = await loadProfile();
+  const template = getCoverLetterTemplate(profile);
+  if (!template) {
+    ui.coverLetterStatus.textContent = "Upload a cover letter template on the account page first.";
+    return;
+  }
+
+  const job = runtimeState.currentJob ?? await loadDetectedJob();
+  if (!job) {
+    ui.coverLetterStatus.textContent = "Refresh a LinkedIn job before downloading a cover letter.";
+    return;
+  }
+
+  const { company, title } = getCoverLetterFormValues();
+  if (!company || !title) {
+    ui.coverLetterStatus.textContent = "Company and job title are both required.";
+    return;
+  }
+
+  ui.coverLetterStatus.textContent = `Preparing ${format.toUpperCase()} download...`;
+  try {
+    if (format === "pdf") {
+      await downloadCoverLetterPdf({ template, company, title });
+    } else {
+      await downloadCoverLetterDocx({ template, company, title });
+    }
+    ui.coverLetterStatus.textContent = `${format.toUpperCase()} cover letter downloaded for ${company}.`;
+  } catch (error) {
+    ui.coverLetterStatus.textContent = error?.message || `Could not build the ${format.toUpperCase()} cover letter.`;
   }
 }
 
@@ -2237,24 +2409,30 @@ async function boot() {
   const savedAuthSnapshot = await loadAuthSnapshot().catch(() => null);
   applySavedAuthSnapshot(savedAuthSnapshot);
 
-  const [resolvedProfile, analysis, cachedJob, favoriteCompanies] = await Promise.all([
+  const [resolvedProfile, analysis, cachedJob, favoriteCompanies, coverLetterDrafts] = await Promise.all([
     refreshAuthAndProfile({ reanalyze: false }).catch(() => null),
     loadCurrentAnalysis(),
     loadDetectedJob(),
-    loadFavoriteCompanies()
+    loadFavoriteCompanies(),
+    loadCoverLetterDrafts()
   ]);
   runtimeState.favoriteCompanies = favoriteCompanies;
+  runtimeState.coverLetterDrafts = coverLetterDrafts;
   renderFavoriteCompanies();
   updateFavoriteButton();
 
   if (cachedJob) {
+    runtimeState.currentJob = cachedJob;
     ui.jobPreview.textContent = [
+      `Title: ${cachedJob.title || "Unavailable"}`,
       `Company: ${cachedJob.company || "Unavailable"}`,
       `Location: ${cachedJob.location || "Unavailable"}`,
       "",
       cachedJob.description || "No job description captured."
     ].join("\n");
   }
+
+  renderCoverLetterComposer(resolvedProfile, runtimeState.currentJob);
 
   if (
     resolvedProfile?.parsedResume &&
@@ -2281,6 +2459,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (changes[STORAGE_KEYS.profile]) {
     const profile = isSignedIn() ? (changes[STORAGE_KEYS.profile].newValue ?? null) : null;
     renderProfile(profile);
+    renderCoverLetterComposer(profile, runtimeState.currentJob);
 
     if (isSignedIn() && profile?.parsedResume) {
       recomputeAnalysisForProfile(profile, changes[STORAGE_KEYS.detectedJob]?.newValue ?? null).catch((error) => {
@@ -2295,18 +2474,26 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     updateFavoriteButton();
   }
 
+  if (changes[STORAGE_KEYS.coverLetterDrafts]) {
+    runtimeState.coverLetterDrafts = changes[STORAGE_KEYS.coverLetterDrafts].newValue ?? {};
+    loadProfile().then((profile) => renderCoverLetterComposer(profile, runtimeState.currentJob)).catch(() => {});
+  }
+
   if (changes[STORAGE_KEYS.authSnapshot]) {
     applySavedAuthSnapshot(changes[STORAGE_KEYS.authSnapshot].newValue ?? null);
     renderAuthState();
   }
 
   if (changes[STORAGE_KEYS.currentAnalysis]) {
-    renderAnalysis(isSignedIn() ? (changes[STORAGE_KEYS.currentAnalysis].newValue ?? null) : null);
+    const analysis = isSignedIn() ? (changes[STORAGE_KEYS.currentAnalysis].newValue ?? null) : null;
+    runtimeState.currentJob = analysis?.job ?? runtimeState.currentJob;
+    renderAnalysis(analysis);
   }
 
   if (changes[STORAGE_KEYS.detectedJob]) {
     const job = changes[STORAGE_KEYS.detectedJob].newValue ?? null;
     if (isSignedIn() && job) {
+      runtimeState.currentJob = job;
       ui.jobTitleLine.textContent = job.title ? `Title: ${job.title}` : "Title: Unavailable";
       ui.jobPreview.textContent = [
         `Title: ${job.title || "Unavailable"}`,
@@ -2318,6 +2505,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
       loadProfile().then((profile) => {
         if (profile?.parsedResume) {
+          renderCoverLetterComposer(profile, job);
           loadCurrentAnalysis().then((analysis) => {
             if (analysisNeedsRefreshForJob(analysis, job) || analysisNeedsRefresh(analysis, profile)) {
               recomputeAnalysisForJob(job, profile).catch((error) => {
@@ -2333,6 +2521,24 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
 ui.resumeInput.addEventListener("change", handleResumeUpload);
 ui.refreshButton.addEventListener("click", refreshAnalysis);
+ui.openAccountTemplateButton.addEventListener("click", () => openAccountPage("#profile"));
+ui.saveCoverLetterButton.addEventListener("click", handleSaveCoverLetterDetails);
+ui.downloadCoverLetterDocxButton.addEventListener("click", () => handleDownloadCoverLetter("docx"));
+ui.downloadCoverLetterPdfButton.addEventListener("click", () => handleDownloadCoverLetter("pdf"));
+["input", "change"].forEach((eventName) => {
+  ui.coverLetterCompanyInput.addEventListener(eventName, () => {
+    const hasTemplate = ui.coverLetterTemplateName.textContent !== "Template: none uploaded";
+    const hasJob = Boolean(runtimeState.currentJob);
+    const { company, title } = getCoverLetterFormValues();
+    updateCoverLetterButtons({ hasTemplate, hasJob, hasValues: Boolean(company && title) });
+  });
+  ui.coverLetterTitleInput.addEventListener(eventName, () => {
+    const hasTemplate = ui.coverLetterTemplateName.textContent !== "Template: none uploaded";
+    const hasJob = Boolean(runtimeState.currentJob);
+    const { company, title } = getCoverLetterFormValues();
+    updateCoverLetterButtons({ hasTemplate, hasJob, hasValues: Boolean(company && title) });
+  });
+});
 ui.favoriteCompanyButton.addEventListener("click", toggleFavoriteCompany);
 ui.removeFavoriteCompanyButton.addEventListener("click", () => removeFavoriteCompany());
 ui.closeFavoriteModalButton.addEventListener("click", closeFavoriteCompanyModal);
