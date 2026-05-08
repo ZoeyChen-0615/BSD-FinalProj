@@ -362,6 +362,7 @@ const ui = {
   resumePreview: document.getElementById("resumePreview"),
   refreshButton: document.getElementById("refreshButton"),
   jobMeta: document.getElementById("jobMeta"),
+  jobTitleLine: document.getElementById("jobTitleLine"),
   jobDescriptionHint: document.getElementById("jobDescriptionHint"),
   jobPreview: document.getElementById("jobPreview"),
   matchScore: document.getElementById("matchScore"),
@@ -1722,6 +1723,7 @@ function renderAnalysis(analysis) {
   if (!isSignedIn()) {
     runtimeState.currentCompany = null;
     ui.jobMeta.textContent = "Log in to unlock job fit analysis.";
+    ui.jobTitleLine.textContent = "";
     ui.jobDescriptionHint.textContent = "";
     ui.jobPreview.textContent = "Job analysis is hidden until you sign in.";
     ui.matchScore.textContent = "--";
@@ -1746,6 +1748,7 @@ function renderAnalysis(analysis) {
   if (!analysis) {
     runtimeState.currentCompany = null;
     ui.jobMeta.textContent = "Open a LinkedIn job posting, then click refresh.";
+    ui.jobTitleLine.textContent = "";
     ui.jobDescriptionHint.textContent = "";
     ui.jobPreview.textContent = "No captured job data yet.";
     ui.matchScore.textContent = "--";
@@ -1772,10 +1775,12 @@ function renderAnalysis(analysis) {
   const displayCompany = normalizeDisplayCompany(job.company);
 
   ui.jobMeta.textContent = displayCompany || "Unknown company";
+  ui.jobTitleLine.textContent = job.title ? `Title: ${job.title}` : "Title: Unavailable";
   ui.jobDescriptionHint.textContent = job.description
     ? `${job.description.slice(0, 140)}${job.description.length > 140 ? "..." : ""}`
     : "No job description captured.";
   ui.jobPreview.textContent = [
+    `Title: ${job.title || "Unavailable"}`,
     `Company: ${job.company || "Unavailable"}`,
     `Location: ${job.location || "Unavailable"}`,
     "",
@@ -2302,7 +2307,9 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (changes[STORAGE_KEYS.detectedJob]) {
     const job = changes[STORAGE_KEYS.detectedJob].newValue ?? null;
     if (isSignedIn() && job) {
+      ui.jobTitleLine.textContent = job.title ? `Title: ${job.title}` : "Title: Unavailable";
       ui.jobPreview.textContent = [
+        `Title: ${job.title || "Unavailable"}`,
         `Company: ${job.company || "Unavailable"}`,
         `Location: ${job.location || "Unavailable"}`,
         "",

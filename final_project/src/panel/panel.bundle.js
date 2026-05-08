@@ -122600,6 +122600,7 @@ var require_panel = __commonJS({
       resumePreview: document.getElementById("resumePreview"),
       refreshButton: document.getElementById("refreshButton"),
       jobMeta: document.getElementById("jobMeta"),
+      jobTitleLine: document.getElementById("jobTitleLine"),
       jobDescriptionHint: document.getElementById("jobDescriptionHint"),
       jobPreview: document.getElementById("jobPreview"),
       matchScore: document.getElementById("matchScore"),
@@ -123472,6 +123473,7 @@ var require_panel = __commonJS({
       if (!isSignedIn()) {
         runtimeState.currentCompany = null;
         ui2.jobMeta.textContent = "Log in to unlock job fit analysis.";
+        ui2.jobTitleLine.textContent = "";
         ui2.jobDescriptionHint.textContent = "";
         ui2.jobPreview.textContent = "Job analysis is hidden until you sign in.";
         ui2.matchScore.textContent = "--";
@@ -123495,6 +123497,7 @@ var require_panel = __commonJS({
       if (!analysis) {
         runtimeState.currentCompany = null;
         ui2.jobMeta.textContent = "Open a LinkedIn job posting, then click refresh.";
+        ui2.jobTitleLine.textContent = "";
         ui2.jobDescriptionHint.textContent = "";
         ui2.jobPreview.textContent = "No captured job data yet.";
         ui2.matchScore.textContent = "--";
@@ -123519,8 +123522,10 @@ var require_panel = __commonJS({
       runtimeState.currentCompany = company?.name ? company : { ...company, name: job.company || company?.name || "" };
       const displayCompany = normalizeDisplayCompany(job.company);
       ui2.jobMeta.textContent = displayCompany || "Unknown company";
+      ui2.jobTitleLine.textContent = job.title ? `Title: ${job.title}` : "Title: Unavailable";
       ui2.jobDescriptionHint.textContent = job.description ? `${job.description.slice(0, 140)}${job.description.length > 140 ? "..." : ""}` : "No job description captured.";
       ui2.jobPreview.textContent = [
+        `Title: ${job.title || "Unavailable"}`,
         `Company: ${job.company || "Unavailable"}`,
         `Location: ${job.location || "Unavailable"}`,
         "",
@@ -123949,7 +123954,9 @@ var require_panel = __commonJS({
       if (changes[STORAGE_KEYS.detectedJob]) {
         const job = changes[STORAGE_KEYS.detectedJob].newValue ?? null;
         if (isSignedIn() && job) {
+          ui2.jobTitleLine.textContent = job.title ? `Title: ${job.title}` : "Title: Unavailable";
           ui2.jobPreview.textContent = [
+            `Title: ${job.title || "Unavailable"}`,
             `Company: ${job.company || "Unavailable"}`,
             `Location: ${job.location || "Unavailable"}`,
             "",
