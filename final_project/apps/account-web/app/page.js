@@ -410,19 +410,6 @@ function AccountDashboard() {
               disabled={isUploading}
             />
           </label>
-          <p className="muted-copy">
-            Cover letter template: <strong>{profile?.coverLetterTemplate?.fileName ?? "none"}</strong>
-          </p>
-          <p className="muted-copy">Template uploaded at: {formatDate(profile?.coverLetterTemplate?.uploadedAt)}</p>
-          <label className="upload-button">
-            <span>{isUploadingTemplate ? "Uploading..." : "Upload Cover Letter Template (.docx)"}</span>
-            <input
-              type="file"
-              accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              onChange={handleCoverLetterTemplateUpload}
-              disabled={isUploadingTemplate}
-            />
-          </label>
           <div className="keyword-block">
             <p className="section-kicker">Latest Keywords</p>
             <div className="keyword-row">
@@ -436,6 +423,30 @@ function AccountDashboard() {
             <p className="section-kicker">Resume Preview</p>
             <pre className="resume-preview">{profile?.parsedResume?.preview ?? "No extracted resume text yet."}</pre>
           </div>
+        </section>
+
+        <section className="surface-card">
+          <div className="section-head">
+            <h2>Cover Letter Template</h2>
+            <span className="status-pill">{profile?.coverLetterTemplate?.fileName ? "Template ready" : "No template yet"}</span>
+          </div>
+          <p className="muted-copy">
+            Latest template: <strong>{profile?.coverLetterTemplate?.fileName ?? "none"}</strong>
+          </p>
+          <p className="muted-copy">Uploaded at: {formatDate(profile?.coverLetterTemplate?.uploadedAt)}</p>
+          <label className="upload-button">
+            <span>{isUploadingTemplate ? "Uploading..." : "Upload Cover Letter Template (.docx)"}</span>
+            <input
+              type="file"
+              accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={handleCoverLetterTemplateUpload}
+              disabled={isUploadingTemplate}
+            />
+          </label>
+          <p className="muted-copy">
+            Use a DOCX template with the placeholders <strong>[company]</strong> and <strong>[title]</strong>. The
+            extension will sync this template, let you edit company/title, and generate a role-specific download.
+          </p>
         </section>
 
         <section className="surface-card">

@@ -2,6 +2,8 @@ import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import { parse } from "csv-parse/sync";
 
+let companyRankingsPromise = null;
+
 function createMetricTracker() {
   return { sum: 0, count: 0 };
 }
@@ -124,10 +126,16 @@ function topByMetric(companies, field) {
 }
 
 export async function getCompanyRankings() {
-  const companyIndex = await buildCompanyIndex();
-  const companies = [...companyIndex.values()].map(toCompanyRecord);
+  if (!companyRankingsPromise) {
+    companyRankingsPromise = buildCompanyIndex()
+      .then((companyIndex) => ({
+        companies: [...companyIndex.values()].map(toCompanyRecord)
+      }))
+      .catch((error) => {
+        companyRankingsPromise = null;
+        throw error;
+      });
+  }
 
-  return {
-    companies
-  };
+  return companyRankingsPromise;
 }
