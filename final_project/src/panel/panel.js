@@ -20,7 +20,6 @@ import {
 import {
   buildCoverLetterDraftKey,
   downloadCoverLetterDocx,
-  downloadCoverLetterPdf,
   getCoverLetterDefaults,
   getCoverLetterTemplate,
   sanitizeCoverLetterField
@@ -384,7 +383,6 @@ const ui = {
   coverLetterTitleInput: document.getElementById("coverLetterTitleInput"),
   saveCoverLetterButton: document.getElementById("saveCoverLetterButton"),
   downloadCoverLetterDocxButton: document.getElementById("downloadCoverLetterDocxButton"),
-  downloadCoverLetterPdfButton: document.getElementById("downloadCoverLetterPdfButton"),
   coverLetterStatus: document.getElementById("coverLetterStatus"),
   matchScore: document.getElementById("matchScore"),
   requirementsList: document.getElementById("requirementsList"),
@@ -1761,7 +1759,6 @@ function getCoverLetterFormValues() {
 function updateCoverLetterButtons({ hasTemplate, hasJob, hasValues }) {
   ui.saveCoverLetterButton.disabled = !isSignedIn() || !hasJob || !hasValues;
   ui.downloadCoverLetterDocxButton.disabled = !isSignedIn() || !hasTemplate || !hasJob || !hasValues;
-  ui.downloadCoverLetterPdfButton.disabled = !isSignedIn() || !hasTemplate || !hasJob || !hasValues;
 }
 
 function renderCoverLetterComposer(profile, job = runtimeState.currentJob) {
@@ -2128,7 +2125,7 @@ async function handleSaveCoverLetterDetails() {
   renderCoverLetterComposer(await loadProfile(), job);
 }
 
-async function handleDownloadCoverLetter(format) {
+async function handleDownloadCoverLetter() {
   if (!isSignedIn()) {
     ui.coverLetterStatus.textContent = "Log in before downloading a cover letter.";
     return;
@@ -2153,16 +2150,12 @@ async function handleDownloadCoverLetter(format) {
     return;
   }
 
-  ui.coverLetterStatus.textContent = `Preparing ${format.toUpperCase()} download...`;
+  ui.coverLetterStatus.textContent = "Preparing DOCX download...";
   try {
-    if (format === "pdf") {
-      await downloadCoverLetterPdf({ template, company, title });
-    } else {
-      await downloadCoverLetterDocx({ template, company, title });
-    }
-    ui.coverLetterStatus.textContent = `${format.toUpperCase()} cover letter downloaded for ${company}.`;
+    await downloadCoverLetterDocx({ template, company, title });
+    ui.coverLetterStatus.textContent = `DOCX cover letter downloaded for ${company}.`;
   } catch (error) {
-    ui.coverLetterStatus.textContent = error?.message || `Could not build the ${format.toUpperCase()} cover letter.`;
+    ui.coverLetterStatus.textContent = error?.message || "Could not build the DOCX cover letter.";
   }
 }
 
@@ -2527,8 +2520,7 @@ ui.resumeInput.addEventListener("change", handleResumeUpload);
 ui.refreshButton.addEventListener("click", refreshAnalysis);
 ui.openAccountTemplateButton.addEventListener("click", () => openAccountPage("#profile"));
 ui.saveCoverLetterButton.addEventListener("click", handleSaveCoverLetterDetails);
-ui.downloadCoverLetterDocxButton.addEventListener("click", () => handleDownloadCoverLetter("docx"));
-ui.downloadCoverLetterPdfButton.addEventListener("click", () => handleDownloadCoverLetter("pdf"));
+ui.downloadCoverLetterDocxButton.addEventListener("click", handleDownloadCoverLetter);
 ["input", "change"].forEach((eventName) => {
   ui.coverLetterCompanyInput.addEventListener(eventName, () => {
     const hasTemplate = ui.coverLetterTemplateName.textContent !== "Template: none uploaded";

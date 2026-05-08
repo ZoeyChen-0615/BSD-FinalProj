@@ -11766,14 +11766,14 @@ var require_zipfile = __commonJS({
         function write(name, contents) {
           zipFile.file(name, contents);
         }
-        function toArrayBuffer3() {
+        function toArrayBuffer2() {
           return zipFile.generateAsync({ type: "arraybuffer" });
         }
         return {
           exists: exists2,
           read,
           write,
-          toArrayBuffer: toArrayBuffer3
+          toArrayBuffer: toArrayBuffer2
         };
       });
     }
@@ -60476,9 +60476,6 @@ function base64ToUint8Array(base64) {
   }
   return bytes2;
 }
-function toArrayBuffer(bytes2) {
-  return bytes2.buffer.slice(bytes2.byteOffset, bytes2.byteOffset + bytes2.byteLength);
-}
 function replaceAll(text2, searchValue, replacement) {
   return text2.split(searchValue).join(replacement);
 }
@@ -60565,30 +60562,6 @@ async function downloadCoverLetterDocx({ template: template2, company, title }) 
     new Blob([renderedDocx], { type: DOCX_MIME_TYPE }),
     buildDownloadFileName(company, title, "docx")
   );
-}
-async function downloadCoverLetterPdf({ template: template2, company, title }) {
-  const renderedDocx = await renderCoverLetterDocx(template2, { company, title });
-  const { value } = await import_mammoth.default.extractRawText({ arrayBuffer: toArrayBuffer(renderedDocx) });
-  const text2 = sanitizeCoverLetterField(value?.replace(/\n{3,}/g, "\n\n")) || `${company}
-${title}`;
-  const pdf = new E({ unit: "pt", format: "letter" });
-  const margin = 54;
-  const maxWidth = pdf.internal.pageSize.getWidth() - margin * 2;
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const lineHeight = 18;
-  const lines = pdf.splitTextToSize(text2, maxWidth);
-  let y3 = margin;
-  pdf.setFont("times", "normal");
-  pdf.setFontSize(12);
-  lines.forEach((line2) => {
-    if (y3 > pageHeight - margin) {
-      pdf.addPage();
-      y3 = margin;
-    }
-    pdf.text(line2, margin, y3);
-    y3 += lineHeight;
-  });
-  pdf.save(buildDownloadFileName(company, title, "pdf"));
 }
 var import_mammoth, import_pizzip, DOCX_MIME_TYPE, PLACEHOLDERS;
 var init_coverLetter = __esm({
@@ -114627,12 +114600,12 @@ function numberDecoderFactory(input) {
     read(bytes2, offset5 = 0) {
       assertByteArrayIsNotEmptyForCodec(input.name, bytes2, offset5);
       assertByteArrayHasEnoughBytesForCodec(input.name, input.size, bytes2, offset5);
-      const view = new DataView(toArrayBuffer2(bytes2, offset5, input.size));
+      const view = new DataView(toArrayBuffer(bytes2, offset5, input.size));
       return [input.get(view, isLittleEndian(input.config)), offset5 + input.size];
     }
   });
 }
-function toArrayBuffer2(bytes2, offset5, length2) {
+function toArrayBuffer(bytes2, offset5, length2) {
   const bytesOffset = bytes2.byteOffset + (offset5 ?? 0);
   const bytesLength = length2 ?? bytes2.byteLength;
   return bytes2.buffer.slice(bytesOffset, bytesOffset + bytesLength);
@@ -182348,7 +182321,6 @@ var require_panel = __commonJS({
       coverLetterTitleInput: document.getElementById("coverLetterTitleInput"),
       saveCoverLetterButton: document.getElementById("saveCoverLetterButton"),
       downloadCoverLetterDocxButton: document.getElementById("downloadCoverLetterDocxButton"),
-      downloadCoverLetterPdfButton: document.getElementById("downloadCoverLetterPdfButton"),
       coverLetterStatus: document.getElementById("coverLetterStatus"),
       matchScore: document.getElementById("matchScore"),
       requirementsList: document.getElementById("requirementsList"),
@@ -183233,7 +183205,6 @@ var require_panel = __commonJS({
     function updateCoverLetterButtons({ hasTemplate, hasJob, hasValues }) {
       ui2.saveCoverLetterButton.disabled = !isSignedIn() || !hasJob || !hasValues;
       ui2.downloadCoverLetterDocxButton.disabled = !isSignedIn() || !hasTemplate || !hasJob || !hasValues;
-      ui2.downloadCoverLetterPdfButton.disabled = !isSignedIn() || !hasTemplate || !hasJob || !hasValues;
     }
     function renderCoverLetterComposer(profile, job = runtimeState.currentJob) {
       const template2 = getCoverLetterTemplate(profile);
@@ -183545,7 +183516,7 @@ var require_panel = __commonJS({
       ui2.coverLetterStatus.textContent = "Saved cover letter replacements for this job.";
       renderCoverLetterComposer(await loadProfile(), job);
     }
-    async function handleDownloadCoverLetter(format2) {
+    async function handleDownloadCoverLetter() {
       if (!isSignedIn()) {
         ui2.coverLetterStatus.textContent = "Log in before downloading a cover letter.";
         return;
@@ -183566,16 +183537,12 @@ var require_panel = __commonJS({
         ui2.coverLetterStatus.textContent = "Company and job title are both required.";
         return;
       }
-      ui2.coverLetterStatus.textContent = `Preparing ${format2.toUpperCase()} download...`;
+      ui2.coverLetterStatus.textContent = "Preparing DOCX download...";
       try {
-        if (format2 === "pdf") {
-          await downloadCoverLetterPdf({ template: template2, company, title });
-        } else {
-          await downloadCoverLetterDocx({ template: template2, company, title });
-        }
-        ui2.coverLetterStatus.textContent = `${format2.toUpperCase()} cover letter downloaded for ${company}.`;
+        await downloadCoverLetterDocx({ template: template2, company, title });
+        ui2.coverLetterStatus.textContent = `DOCX cover letter downloaded for ${company}.`;
       } catch (error2) {
-        ui2.coverLetterStatus.textContent = error2?.message || `Could not build the ${format2.toUpperCase()} cover letter.`;
+        ui2.coverLetterStatus.textContent = error2?.message || "Could not build the DOCX cover letter.";
       }
     }
     async function readLinkedInJobFromActiveTab() {
@@ -183871,8 +183838,7 @@ var require_panel = __commonJS({
     ui2.refreshButton.addEventListener("click", refreshAnalysis);
     ui2.openAccountTemplateButton.addEventListener("click", () => openAccountPage("#profile"));
     ui2.saveCoverLetterButton.addEventListener("click", handleSaveCoverLetterDetails);
-    ui2.downloadCoverLetterDocxButton.addEventListener("click", () => handleDownloadCoverLetter("docx"));
-    ui2.downloadCoverLetterPdfButton.addEventListener("click", () => handleDownloadCoverLetter("pdf"));
+    ui2.downloadCoverLetterDocxButton.addEventListener("click", handleDownloadCoverLetter);
     ["input", "change"].forEach((eventName) => {
       ui2.coverLetterCompanyInput.addEventListener(eventName, () => {
         const hasTemplate = ui2.coverLetterTemplateName.textContent !== "Template: none uploaded";
