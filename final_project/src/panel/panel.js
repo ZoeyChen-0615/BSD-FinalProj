@@ -378,6 +378,8 @@ const ui = {
   openAccountTemplateButton: document.getElementById("openAccountTemplateButton"),
   coverLetterTemplateName: document.getElementById("coverLetterTemplateName"),
   coverLetterTemplateUploadedAt: document.getElementById("coverLetterTemplateUploadedAt"),
+  coverLetterCurrentCompany: document.getElementById("coverLetterCurrentCompany"),
+  coverLetterCurrentTitle: document.getElementById("coverLetterCurrentTitle"),
   coverLetterCompanyInput: document.getElementById("coverLetterCompanyInput"),
   coverLetterTitleInput: document.getElementById("coverLetterTitleInput"),
   saveCoverLetterButton: document.getElementById("saveCoverLetterButton"),
@@ -1788,6 +1790,8 @@ function renderCoverLetterComposer(profile, job = runtimeState.currentJob) {
   ui.coverLetterTemplateUploadedAt.textContent = `Template uploaded at: ${
     template?.uploadedAt ? new Date(template.uploadedAt).toLocaleString() : "--"
   }`;
+  ui.coverLetterCurrentCompany.textContent = `Company: ${nextValues.company || defaults.company || "--"}`;
+  ui.coverLetterCurrentTitle.textContent = `Title: ${nextValues.title || defaults.title || "--"}`;
 
   if (!isSignedIn()) {
     setCoverLetterFormValues({ company: "", title: "" });

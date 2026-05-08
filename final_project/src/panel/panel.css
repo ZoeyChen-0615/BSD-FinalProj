@@ -327,6 +327,10 @@ body.popup-view .auth-stack {
   display: none;
 }
 
+body.popup-view .cover-letter-stack {
+  display: grid;
+}
+
 body.popup-view .upload {
   display: none;
 }

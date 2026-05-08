@@ -182342,6 +182342,8 @@ var require_panel = __commonJS({
       openAccountTemplateButton: document.getElementById("openAccountTemplateButton"),
       coverLetterTemplateName: document.getElementById("coverLetterTemplateName"),
       coverLetterTemplateUploadedAt: document.getElementById("coverLetterTemplateUploadedAt"),
+      coverLetterCurrentCompany: document.getElementById("coverLetterCurrentCompany"),
+      coverLetterCurrentTitle: document.getElementById("coverLetterCurrentTitle"),
       coverLetterCompanyInput: document.getElementById("coverLetterCompanyInput"),
       coverLetterTitleInput: document.getElementById("coverLetterTitleInput"),
       saveCoverLetterButton: document.getElementById("saveCoverLetterButton"),
@@ -183254,6 +183256,8 @@ var require_panel = __commonJS({
       }
       ui2.coverLetterTemplateName.textContent = `Template: ${template2?.fileName ?? "none uploaded"}`;
       ui2.coverLetterTemplateUploadedAt.textContent = `Template uploaded at: ${template2?.uploadedAt ? new Date(template2.uploadedAt).toLocaleString() : "--"}`;
+      ui2.coverLetterCurrentCompany.textContent = `Company: ${nextValues.company || defaults.company || "--"}`;
+      ui2.coverLetterCurrentTitle.textContent = `Title: ${nextValues.title || defaults.title || "--"}`;
       if (!isSignedIn()) {
         setCoverLetterFormValues({ company: "", title: "" });
         ui2.coverLetterStatus.textContent = "Log in to generate a role-specific cover letter.";
