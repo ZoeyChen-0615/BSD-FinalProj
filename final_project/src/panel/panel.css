@@ -5,12 +5,16 @@
   --ink: #1e1d1a;
   --muted: #6d665d;
   --line: rgba(47, 41, 34, 0.12);
+  --line-strong: rgba(47, 41, 34, 0.18);
   --brand: #0d6c63;
   --brand-soft: rgba(13, 108, 99, 0.1);
   --danger: #8f2d24;
   --danger-soft: rgba(143, 45, 36, 0.1);
   --success: #246b3b;
   --success-soft: rgba(36, 107, 59, 0.1);
+  --card-radius: 18px;
+  --surface-radius: 16px;
+  --tile-radius: 14px;
   --shadow: 0 16px 34px rgba(49, 37, 22, 0.06);
   font-family: "Avenir Next", "Segoe UI", sans-serif;
 }
@@ -55,7 +59,7 @@ body.account-view {
   border: 1px solid var(--line);
   background: var(--panel);
   box-shadow: var(--shadow);
-  border-radius: 18px;
+  border-radius: var(--card-radius);
 }
 
 .hero {
@@ -168,6 +172,44 @@ body.account-view {
   font-weight: 700;
 }
 
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(13, 108, 99, 0.16), rgba(13, 108, 99, 0.08));
+  border: 1px solid rgba(13, 108, 99, 0.18);
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.brand-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.brand-copy .eyebrow {
+  margin-bottom: 0;
+}
+
+.brand-subcopy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
 h1 {
   margin: 0;
   font-size: 23px;
@@ -244,7 +286,7 @@ h3 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: 14px;
   font-weight: 700;
 }
 
@@ -504,6 +546,29 @@ body.popup-view .account-menu {
   box-shadow: none;
 }
 
+body.popup-view .hero,
+body.popup-view .card {
+  border-radius: 14px;
+  border-color: var(--line-strong);
+}
+
+body.popup-view .hero {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(251, 248, 242, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+body.popup-view .hero::before,
+body.popup-view .card::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 2px;
+  margin: -14px 0 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(13, 108, 99, 0.55), rgba(13, 108, 99, 0));
+}
+
 body.popup-view .hero {
   overflow: visible;
 }
@@ -536,6 +601,23 @@ body.popup-view .hero {
 
 body.popup-view .card {
   padding: 14px;
+}
+
+body.popup-view .account-button {
+  border-radius: 14px;
+}
+
+body.popup-view .account-avatar {
+  border-radius: 10px;
+}
+
+body.popup-view .account-menu {
+  border-radius: 14px;
+}
+
+body.popup-view .button,
+body.popup-view .upload span {
+  border-radius: 12px;
 }
 
 body.popup-view .debug-preview {
@@ -697,7 +779,7 @@ body.popup-view .resource-card {
   min-height: 520px;
   padding: 22px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--surface-radius);
   background: rgba(255, 255, 255, 0.84);
 }
 
@@ -711,18 +793,30 @@ body.popup-view .favorites-section {
   display: none;
 }
 
-.requirement.matched,
-.signal.positive {
-  background: var(--success-soft);
+.requirement.matched {
+  background: rgba(255, 255, 255, 0.92);
   color: var(--success);
-  border-color: rgba(36, 107, 59, 0.18);
+  border-color: rgba(36, 107, 59, 0.28);
 }
 
-.requirement.missing,
-.signal.negative {
-  background: var(--danger-soft);
+.requirement.missing {
+  background: rgba(255, 255, 255, 0.92);
   color: var(--danger);
-  border-color: rgba(143, 45, 36, 0.18);
+  border-color: rgba(143, 45, 36, 0.24);
+}
+
+.signal.positive {
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--ink);
+  border-color: rgba(36, 107, 59, 0.22);
+  box-shadow: inset 2px 0 0 rgba(36, 107, 59, 0.55);
+}
+
+.signal.negative {
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--ink);
+  border-color: rgba(143, 45, 36, 0.22);
+  box-shadow: inset 2px 0 0 rgba(143, 45, 36, 0.55);
 }
 
 .signal-grid {
@@ -734,7 +828,7 @@ body.popup-view .favorites-section {
 .resource-card {
   display: block;
   padding: 12px 14px;
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.6);
   color: var(--ink);
@@ -781,7 +875,7 @@ body.popup-view .favorites-section {
 
 .metric {
   padding: 12px;
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.55);
 }
@@ -806,7 +900,7 @@ body.popup-view .favorites-section {
 
 .comment-card {
   padding: 14px 16px;
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.72);
   color: var(--ink);
@@ -816,15 +910,17 @@ body.popup-view .favorites-section {
 }
 
 .comment-card.positive {
-  background: rgba(36, 107, 59, 0.08);
-  border-color: rgba(36, 107, 59, 0.18);
-  color: var(--success);
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(36, 107, 59, 0.2);
+  color: var(--ink);
+  box-shadow: inset 3px 0 0 rgba(36, 107, 59, 0.55);
 }
 
 .comment-card.negative {
-  background: rgba(143, 45, 36, 0.08);
-  border-color: rgba(143, 45, 36, 0.18);
-  color: var(--danger);
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(143, 45, 36, 0.2);
+  color: var(--ink);
+  box-shadow: inset 3px 0 0 rgba(143, 45, 36, 0.55);
 }
 
 .detail-comments-grid {
@@ -880,7 +976,7 @@ body.popup-view .hero-copy {
 
 body.popup-view .metric {
   padding: 10px;
-  border-radius: 14px;
+  border-radius: 10px;
 }
 
 body.popup-view .company-grid {
