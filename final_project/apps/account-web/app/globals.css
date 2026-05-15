@@ -503,7 +503,7 @@ h3 {
 
 .ranking-tabs {
   grid-auto-flow: column;
-  justify-content: start;
+  justify-content: center;
   gap: 10px;
   overflow-x: auto;
 }

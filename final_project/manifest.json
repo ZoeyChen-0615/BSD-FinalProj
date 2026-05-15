@@ -5,6 +5,7 @@
   "description": "LinkedIn side panel for job fit, work-life balance, and resume-based insights.",
   "permissions": [
     "activeTab",
+    "downloads",
     "scripting",
     "storage",
     "tabs"

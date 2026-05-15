@@ -33,6 +33,20 @@ function buildDownloadFileName(extension) {
 
 function triggerDownload(blob, fileName) {
   const objectUrl = URL.createObjectURL(blob);
+  const extensionDownloads = globalThis.chrome?.downloads;
+
+  if (extensionDownloads?.download) {
+    extensionDownloads.download(
+      {
+        url: objectUrl,
+        filename: fileName,
+        saveAs: true
+      },
+      () => window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+    );
+    return;
+  }
+
   const anchor = document.createElement("a");
   anchor.href = objectUrl;
   anchor.download = fileName;
