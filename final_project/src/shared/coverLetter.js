@@ -31,15 +31,26 @@ function buildDownloadFileName(extension) {
   return `coverletter.${extension}`;
 }
 
-function triggerDownload(blob, fileName) {
-  const objectUrl = URL.createObjectURL(blob);
+function createNamedFile(parts, fileName, mimeType) {
+  if (typeof File === "function") {
+    return new File(parts, fileName, { type: mimeType });
+  }
+
+  const fallback = new Blob(parts, { type: mimeType });
+  fallback.name = fileName;
+  return fallback;
+}
+
+function triggerDownload(fileLike, fileName) {
+  const resolvedFileName = fileLike?.name || fileName;
+  const objectUrl = URL.createObjectURL(fileLike);
   const extensionDownloads = globalThis.chrome?.downloads;
 
   if (extensionDownloads?.download) {
     extensionDownloads.download(
       {
         url: objectUrl,
-        filename: fileName,
+        filename: resolvedFileName,
         saveAs: true
       },
       () => window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
@@ -49,7 +60,7 @@ function triggerDownload(blob, fileName) {
 
   const anchor = document.createElement("a");
   anchor.href = objectUrl;
-  anchor.download = fileName;
+  anchor.download = resolvedFileName;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
@@ -136,10 +147,9 @@ export async function renderCoverLetterDocx(template, replacements) {
 
 export async function downloadCoverLetterDocx({ template, company, title }) {
   const renderedDocx = await renderCoverLetterDocx(template, { company, title });
-  triggerDownload(
-    new Blob([renderedDocx], { type: DOCX_MIME_TYPE }),
-    buildDownloadFileName("docx")
-  );
+  const fileName = buildDownloadFileName("docx");
+  const docxFile = createNamedFile([renderedDocx], fileName, DOCX_MIME_TYPE);
+  triggerDownload(docxFile, fileName);
 }
 
 export async function downloadCoverLetterPdf({ template, company, title }) {
