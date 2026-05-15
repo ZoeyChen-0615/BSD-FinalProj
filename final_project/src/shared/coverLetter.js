@@ -27,18 +27,8 @@ function replaceAll(text, searchValue, replacement) {
   return text.split(searchValue).join(replacement);
 }
 
-function sanitizeFileSegment(value) {
-  return (value || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 60);
-}
-
-function buildDownloadFileName(company, title, extension) {
-  const companyPart = sanitizeFileSegment(company) || "company";
-  const titlePart = sanitizeFileSegment(title) || "cover-letter";
-  return `cover-letter-${companyPart}-${titlePart}.${extension}`;
+function buildDownloadFileName(extension) {
+  return `coverletter.${extension}`;
 }
 
 function triggerDownload(blob, fileName) {
@@ -134,7 +124,7 @@ export async function downloadCoverLetterDocx({ template, company, title }) {
   const renderedDocx = await renderCoverLetterDocx(template, { company, title });
   triggerDownload(
     new Blob([renderedDocx], { type: DOCX_MIME_TYPE }),
-    buildDownloadFileName(company, title, "docx")
+    buildDownloadFileName("docx")
   );
 }
 
@@ -163,5 +153,5 @@ export async function downloadCoverLetterPdf({ template, company, title }) {
     y += lineHeight;
   });
 
-  pdf.save(buildDownloadFileName(company, title, "pdf"));
+  pdf.save(buildDownloadFileName("pdf"));
 }

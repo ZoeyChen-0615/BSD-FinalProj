@@ -60479,13 +60479,8 @@ function base64ToUint8Array(base64) {
 function replaceAll(text2, searchValue, replacement) {
   return text2.split(searchValue).join(replacement);
 }
-function sanitizeFileSegment(value) {
-  return (value || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
-}
-function buildDownloadFileName(company, title, extension) {
-  const companyPart = sanitizeFileSegment(company) || "company";
-  const titlePart = sanitizeFileSegment(title) || "cover-letter";
-  return `cover-letter-${companyPart}-${titlePart}.${extension}`;
+function buildDownloadFileName(extension) {
+  return `coverletter.${extension}`;
 }
 function triggerDownload(blob3, fileName) {
   const objectUrl = URL.createObjectURL(blob3);
@@ -60560,7 +60555,7 @@ async function downloadCoverLetterDocx({ template: template2, company, title }) 
   const renderedDocx = await renderCoverLetterDocx(template2, { company, title });
   triggerDownload(
     new Blob([renderedDocx], { type: DOCX_MIME_TYPE }),
-    buildDownloadFileName(company, title, "docx")
+    buildDownloadFileName("docx")
   );
 }
 var import_mammoth, import_pizzip, DOCX_MIME_TYPE, PLACEHOLDERS;
