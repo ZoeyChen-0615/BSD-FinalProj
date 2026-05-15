@@ -1,8 +1,7 @@
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
+import { unstable_cache } from "next/cache";
 import { parse } from "csv-parse/sync";
-
-let companyRankingsPromise = null;
 
 function createMetricTracker() {
   return { sum: 0, count: 0 };
@@ -125,17 +124,19 @@ function topByMetric(companies, field) {
     .slice(0, 5);
 }
 
-export async function getCompanyRankings() {
-  if (!companyRankingsPromise) {
-    companyRankingsPromise = buildCompanyIndex()
-      .then((companyIndex) => ({
-        companies: [...companyIndex.values()].map(toCompanyRecord)
-      }))
-      .catch((error) => {
-        companyRankingsPromise = null;
-        throw error;
-      });
+const getCachedCompanyRankings = unstable_cache(
+  async () => {
+    const companyIndex = await buildCompanyIndex();
+    return {
+      companies: [...companyIndex.values()].map(toCompanyRecord)
+    };
+  },
+  ["workwise-company-rankings"],
+  {
+    revalidate: 3600
   }
+);
 
-  return companyRankingsPromise;
+export async function getCompanyRankings() {
+  return getCachedCompanyRankings();
 }
